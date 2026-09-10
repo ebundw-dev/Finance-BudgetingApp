@@ -8,6 +8,20 @@
       "when": 1789072736596,
       "tag": "0000_quick_george_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789073645190,
+      "tag": "0001_unallocated_cash_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789074953401,
+      "tag": "0002_happy_bedlam",
+      "breakpoints": true
     }
   ]
 }

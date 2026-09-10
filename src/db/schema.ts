@@ -127,8 +127,12 @@ export const categories = pgTable(
 // Unified ledger feed. Column usage per type (see CLAUDE.md's rules table):
 //   income                 -> accountId = destination cash account
 //   allocation              -> categoryId = destination category (source is Unallocated Cash, not a row)
-//   expense                 -> accountId = cash or credit card account, categoryId = spent category
-//   debt_payment             -> accountId = source cash account, relatedAccountId = debt/CC account paid down
+//   expense (cash account)  -> accountId = cash account, categoryId = spent category
+//   expense (credit card)   -> accountId = credit card account, categoryId = spent category,
+//                              relatedCategoryId = that card's debt reserve category (debts.category_id),
+//                              credited by the same amount so Sum(categories) doesn't move
+//   debt_payment             -> accountId = source cash account, relatedAccountId = debt/CC account paid down,
+//                              categoryId = that debt's reserve category, debited by the payment amount
 //   transfer                 -> accountId = from account, relatedAccountId = to account
 //   category_reallocation    -> categoryId = from category, relatedCategoryId = to category
 // amount is always stored positive; direction is derived from `type` in the accounting engine.
@@ -168,6 +172,17 @@ export const debts = pgTable("debts", {
     .notNull()
     .unique()
     .references(() => accounts.id),
+  // The category (e.g. "Credit Card 1" in the DEBT group) that reserves
+  // cash to pay this debt down. A credit card purchase moves the spent
+  // amount from the user's chosen spending category into this one, so the
+  // sum of all category balances -- and therefore Unallocated Cash -- never
+  // moves at purchase time. Paying the bill later draws down this category
+  // (and cash) without touching the spending category again, since the
+  // spend was already counted at purchase time. See CLAUDE.md.
+  categoryId: uuid("category_id")
+    .notNull()
+    .unique()
+    .references(() => categories.id),
   startingBalance: numeric("starting_balance", { precision: 12, scale: 2 }).notNull(),
   minimumPayment: numeric("minimum_payment", { precision: 12, scale: 2 }),
   apr: numeric("apr", { precision: 5, scale: 2 }),
