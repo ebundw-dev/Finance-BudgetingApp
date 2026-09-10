@@ -61,6 +61,21 @@ async function lockTwo<T>(
   return firstId === idA ? [first, second] : [second, first];
 }
 
+// Locks an arbitrary set of rows of the same table in a stable order (by
+// id) for the same deadlock-avoidance reason as lockTwo above, generalized
+// to N rows for bulk allocation.
+async function lockMany<T extends { id: string }>(
+  ids: string[],
+  lockOne: (id: string) => Promise<T>
+): Promise<T[]> {
+  const sortedIds = [...new Set(ids)].sort();
+  const results: T[] = [];
+  for (const id of sortedIds) {
+    results.push(await lockOne(id));
+  }
+  return results;
+}
+
 // Reads (unlocked) the current Unallocated Cash for a user, for pre-flight
 // validation and friendly error messages. This is a snapshot, not a lock:
 // two concurrent allocations against different categories could both read
@@ -469,4 +484,71 @@ export async function recordCategoryReallocation(
     .where(eq(categories.id, toCategory.id));
 
   return txn;
+}
+
+export interface BulkAllocationItem {
+  categoryId: string;
+  amount: string;
+}
+
+// Distributes a lump sum across several categories in one atomic
+// operation, checking the combined total against Unallocated Cash rather
+// than checking each row independently -- used by the allocation screen's
+// multi-category form, Auto-Allocate (rule-set percentages, see
+// allocationRules.ts), and Quick Payout Allocation (priority-tagged
+// categories). Writes one 'allocation' ledger row per category, same as
+// calling recordAllocation once per item would, just atomically.
+export async function recordBulkAllocation(
+  tx: Tx,
+  userId: string,
+  items: BulkAllocationItem[],
+  params: { date: string; notes?: string }
+) {
+  const positiveItems = items.filter((item) => Number(item.amount) > 0);
+  if (positiveItems.length === 0) {
+    throw new ValidationError("At least one allocation amount must be greater than zero.");
+  }
+
+  const ids = positiveItems.map((item) => item.categoryId);
+  if (new Set(ids).size !== ids.length) {
+    throw new ValidationError("Cannot allocate to the same category twice in one batch.");
+  }
+
+  const lockedCategories = await lockMany(ids, (id) => lockCategory(tx, userId, id));
+  const byId = new Map(lockedCategories.map((category) => [category.id, category]));
+
+  const totalRequested = positiveItems.reduce((sum, item) => sum + Number(item.amount), 0);
+  const unallocated = await getUnallocatedCash(tx, userId);
+  if (totalRequested > unallocated) {
+    throw new InsufficientUnallocatedCashError(
+      `Cannot allocate ${totalRequested.toFixed(2)}; only ${unallocated.toFixed(2)} unallocated.`
+    );
+  }
+
+  const created = [];
+  for (const item of positiveItems) {
+    const category = byId.get(item.categoryId)!;
+
+    const [txn] = await tx
+      .insert(transactions)
+      .values({
+        userId,
+        type: "allocation",
+        categoryId: category.id,
+        amount: item.amount,
+        date: params.date,
+        notes: params.notes,
+      })
+      .returning();
+    created.push(txn);
+
+    await tx
+      .update(categories)
+      .set({
+        allocatedBalance: sql`${categories.allocatedBalance} + ${item.amount}`,
+      })
+      .where(eq(categories.id, category.id));
+  }
+
+  return created;
 }

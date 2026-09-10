@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { phaseEnum } from "@/db/schema";
 import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
@@ -18,6 +19,14 @@ export default async function Home() {
   return (
     <main>
       <h1>Ledger</h1>
+
+      <nav>
+        <Link href="/accounts">Accounts</Link> | <Link href="/categories">Categories</Link> |{" "}
+        <Link href="/transactions">Transactions</Link> | <Link href="/income/new">Record Income</Link> |{" "}
+        <Link href="/allocate">Allocate</Link> |{" "}
+        <Link href="/allocate/quick">Quick Payout Allocation</Link> |{" "}
+        <Link href="/rules">Allocation Rule Sets</Link>
+      </nav>
 
       <section>
         <form action={updatePhase}>
