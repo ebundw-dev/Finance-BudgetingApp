@@ -63,3 +63,13 @@ An emergent invariant, worth checking in tests: as long as every credit card cha
 - Run the accounting engine's unit tests (`npm test`) before touching UI in any session where transaction logic changed. Tests live alongside the code in `src/lib/accounting/*.test.ts` and run against the real Neon dev DB inside a transaction that's always rolled back (see `src/lib/accounting/testing.ts`) — they exercise the real DB-level constraints/triggers, not a mock.
 - The core equation and "never negative" rules are enforced at two layers, both required: the service layer (`src/lib/accounting/engine.ts`) does pre-flight checks for good error messages, and the database is the actual source of truth — `CHECK` constraints on `categories.allocated_balance >= 0` / `transactions.amount > 0`, plus a `DEFERRABLE INITIALLY DEFERRED` constraint trigger (`drizzle/0001_unallocated_cash_guard.sql`) that refuses any transaction that would leave Unallocated Cash negative, evaluated at COMMIT regardless of which code path wrote the data.
 - Don't visually or verbally mimic YNAB's specific terminology or UI.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
