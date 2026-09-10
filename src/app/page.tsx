@@ -25,7 +25,8 @@ export default async function Home() {
         <Link href="/transactions">Transactions</Link> | <Link href="/income/new">Record Income</Link> |{" "}
         <Link href="/allocate">Allocate</Link> |{" "}
         <Link href="/allocate/quick">Quick Payout Allocation</Link> |{" "}
-        <Link href="/rules">Allocation Rule Sets</Link>
+        <Link href="/rules">Allocation Rule Sets</Link> | <Link href="/goals">Goals</Link> |{" "}
+        <Link href="/debts">Debts</Link>
       </nav>
 
       <section>
