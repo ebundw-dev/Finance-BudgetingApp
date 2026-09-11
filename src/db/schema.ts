@@ -33,6 +33,20 @@ export const accountTypeEnum = pgEnum("account_type", [
 
 export const categoryTypeEnum = pgEnum("category_type", ["spending", "goal"]);
 
+// How a category's target_amount should be interpreted -- see the
+// categories table comment below for the behavior of each.
+export const targetTypeEnum = pgEnum("target_type", [
+  "refill_up_to",
+  "set_aside_monthly",
+  "by_date",
+]);
+
+// Only meaningful for targetType "refill_up_to" -- how often the user
+// intends to top the category back up. Doesn't change the funded
+// computation (balance vs. target_amount either way); it's a label for
+// display ("Refill up to $150 / week" vs "/ month").
+export const targetCadenceEnum = pgEnum("target_cadence", ["weekly", "monthly"]);
+
 export const priorityEnum = pgEnum("priority", ["P1", "P2", "P3", "P4"]);
 
 // Covers all 7 accounting rules from CLAUDE.md. "expense" branches into
@@ -103,7 +117,31 @@ export const categories = pgTable(
       .notNull()
       .default("spending"),
     priority: priorityEnum("priority"),
+    // Three ways a target_amount can be interpreted (see CLAUDE.md-adjacent
+    // notes on targets, and src/lib/categories/targets.ts for the actual
+    // funded-status computation):
+    //   refill_up_to      -> funded once allocated_balance reaches
+    //                         target_amount; spending back down just means
+    //                         it needs refilling again. targetCadence is a
+    //                         display-only label for how often ("weekly"/
+    //                         "monthly"), not part of the computation.
+    //   set_aside_monthly -> a fixed target_amount must be allocated every
+    //                         calendar month, regardless of leftover
+    //                         balance -- no cap, no cadence field (it's
+    //                         always monthly), no target date.
+    //   by_date           -> target_amount is a total to reach by
+    //                         targetDate; the monthly amount needed is
+    //                         computed dynamically as
+    //                         (target_amount - allocated_balance) / months
+    //                         remaining, never stored.
+    // Null targetType means no target is set at all (targetAmount is also
+    // null in that case). A category with a pre-existing targetAmount and
+    // no targetType is backfilled to "refill_up_to" by the migration that
+    // introduced these columns, so existing targets keep working.
+    targetType: targetTypeEnum("target_type"),
     targetAmount: numeric("target_amount", { precision: 12, scale: 2 }),
+    targetCadence: targetCadenceEnum("target_cadence"),
+    targetDate: date("target_date"),
     allocatedBalance: numeric("allocated_balance", {
       precision: 12,
       scale: 2,
