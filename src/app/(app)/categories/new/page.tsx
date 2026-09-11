@@ -4,6 +4,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { listCategoryGroups } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import {
   buttonPrimary,
   buttonSecondary,
@@ -33,9 +34,9 @@ export default async function NewCategoryPage({
         </h2>
         <form action={createCategoryGroup} className="flex gap-2">
           <input name="name" type="text" placeholder="Group name" required className={input} />
-          <button type="submit" className={buttonSecondary}>
+          <SubmitButton className={buttonSecondary} pendingLabel="Adding…">
             Add Group
-          </button>
+          </SubmitButton>
         </form>
       </Card>
 
@@ -88,9 +89,9 @@ export default async function NewCategoryPage({
                 {error}
               </p>
             ) : null}
-            <button type="submit" className={buttonPrimary}>
+            <SubmitButton className={buttonPrimary} pendingLabel="Creating…">
               Create Category
-            </button>
+            </SubmitButton>
           </form>
         </Card>
       )}

@@ -5,6 +5,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { getCategory } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import {
   buttonPrimary,
   checkbox,
@@ -101,9 +102,7 @@ export default async function EditCategoryPage({
               {error}
             </p>
           ) : null}
-          <button type="submit" className={buttonPrimary}>
-            Save
-          </button>
+          <SubmitButton className={buttonPrimary}>Save</SubmitButton>
         </form>
       </Card>
     </div>

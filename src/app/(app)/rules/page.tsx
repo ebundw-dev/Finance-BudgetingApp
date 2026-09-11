@@ -4,6 +4,7 @@ import { getRuleSet, listRuleSetNames } from "@/lib/rules/queries";
 import { deleteRuleSet } from "@/lib/rules/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonDanger, buttonPrimary } from "@/lib/ui";
 
 export default async function RulesPage() {
@@ -35,9 +36,9 @@ export default async function RulesPage() {
                 <h2 className="font-medium text-text">{ruleSet.name}</h2>
                 <form action={deleteRuleSet}>
                   <input type="hidden" name="ruleName" value={ruleSet.name} />
-                  <button type="submit" className={buttonDanger}>
+                  <SubmitButton className={buttonDanger} pendingLabel="Deleting…">
                     Delete
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
               <ul className="space-y-1 text-sm text-text-secondary">

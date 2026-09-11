@@ -4,6 +4,7 @@ import { listCashAccounts } from "@/lib/accounts/queries";
 import { quickPayoutAction } from "@/lib/allocation/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, link, select as selectClass } from "@/lib/ui";
 
 export default async function QuickPayoutPage({
@@ -77,9 +78,9 @@ export default async function QuickPayoutPage({
                 {error}
               </p>
             ) : null}
-            <button type="submit" className={buttonPrimary}>
+            <SubmitButton className={buttonPrimary} pendingLabel="Recording…">
               Continue to Allocation
-            </button>
+            </SubmitButton>
           </form>
         </Card>
       )}

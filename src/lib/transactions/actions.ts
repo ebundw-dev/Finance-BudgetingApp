@@ -39,7 +39,7 @@ export async function recordIncomeAction(formData: FormData): Promise<void> {
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Income recorded.")}`);
 }
 
 export async function recordExpenseAction(formData: FormData): Promise<void> {
@@ -62,7 +62,7 @@ export async function recordExpenseAction(formData: FormData): Promise<void> {
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Expense recorded.")}`);
 }
 
 export async function recordTransferAction(formData: FormData): Promise<void> {
@@ -84,7 +84,7 @@ export async function recordTransferAction(formData: FormData): Promise<void> {
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Transfer recorded.")}`);
 }
 
 export async function recordDebtPaymentAction(formData: FormData): Promise<void> {
@@ -106,7 +106,7 @@ export async function recordDebtPaymentAction(formData: FormData): Promise<void>
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Debt payment recorded.")}`);
 }
 
 export async function recordCategoryReallocationAction(formData: FormData): Promise<void> {
@@ -128,5 +128,5 @@ export async function recordCategoryReallocationAction(formData: FormData): Prom
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Categories reallocated.")}`);
 }

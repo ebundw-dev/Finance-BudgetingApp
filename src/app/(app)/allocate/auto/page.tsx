@@ -4,6 +4,7 @@ import { getUnallocatedCash } from "@/lib/allocation/queries";
 import { applyRuleSetAction } from "@/lib/allocation/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, StatCard } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import Link from "next/link";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, link, select as selectClass } from "@/lib/ui";
 
@@ -69,9 +70,9 @@ export default async function AutoAllocatePage({
                 {error}
               </p>
             ) : null}
-            <button type="submit" className={buttonPrimary}>
+            <SubmitButton className={buttonPrimary} pendingLabel="Applying…">
               Apply
-            </button>
+            </SubmitButton>
           </form>
         </Card>
       )}

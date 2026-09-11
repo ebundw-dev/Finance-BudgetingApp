@@ -3,7 +3,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { listRecentTransactions } from "@/lib/transactions/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
-import { buttonPrimary, buttonSecondary, currency, table, td, th } from "@/lib/ui";
+import { buttonPrimary, buttonSecondary, currency, successBanner, table, td, th } from "@/lib/ui";
 
 const TYPE_LABELS: Record<string, string> = {
   income: "Income",
@@ -23,9 +23,13 @@ const TYPE_BADGE: Record<string, string> = {
   category_reallocation: "bg-surface-hover text-text-secondary",
 };
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string }>;
+}) {
   const { userId } = await verifySession();
-  const rows = await listRecentTransactions(userId);
+  const [rows, { success }] = await Promise.all([listRecentTransactions(userId), searchParams]);
 
   return (
     <div>
@@ -43,6 +47,11 @@ export default async function TransactionsPage() {
           </Link>
         </div>
       </div>
+      {success ? (
+        <p role="status" className={successBanner}>
+          {success}
+        </p>
+      ) : null}
       {rows.length === 0 ? (
         <Card>
           <p className="text-sm text-text-muted">No transactions yet.</p>

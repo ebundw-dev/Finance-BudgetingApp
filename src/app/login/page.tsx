@@ -1,3 +1,4 @@
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass } from "@/lib/ui";
 import { login } from "./actions";
 
@@ -45,9 +46,9 @@ export default async function LoginPage({
               Invalid email or password.
             </p>
           ) : null}
-          <button type="submit" className={`${buttonPrimary} w-full`}>
+          <SubmitButton className={`${buttonPrimary} w-full`} pendingLabel="Signing in…">
             Sign in
-          </button>
+          </SubmitButton>
         </form>
       </div>
     </main>

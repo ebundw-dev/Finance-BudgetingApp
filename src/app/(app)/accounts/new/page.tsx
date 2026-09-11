@@ -2,6 +2,7 @@ import { accountTypeEnum } from "@/db/schema";
 import { createAccount } from "@/lib/accounts/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import {
   buttonPrimary,
   checkbox,
@@ -69,9 +70,9 @@ export default async function NewAccountPage({
               {error}
             </p>
           ) : null}
-          <button type="submit" className={`${buttonPrimary} mt-2`}>
+          <SubmitButton className={`${buttonPrimary} mt-2`} pendingLabel="Creating…">
             Create Account
-          </button>
+          </SubmitButton>
         </form>
       </Card>
     </div>

@@ -4,6 +4,7 @@ import { closeMonth } from "@/lib/months/actions";
 import { getMonthSnapshot, getMonthlyTransactionTotals } from "@/lib/months/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, StatCard } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, buttonSecondary, currency } from "@/lib/ui";
 
 const MONTH_NAMES = [
@@ -107,9 +108,9 @@ export default async function MonthlyPage({
           <form action={closeMonth} className="mt-4">
             <input type="hidden" name="year" value={year} />
             <input type="hidden" name="month" value={month} />
-            <button type="submit" className={buttonPrimary}>
+            <SubmitButton className={buttonPrimary} pendingLabel="Saving snapshot…">
               {snapshot ? "Update snapshot for this month" : "Take snapshot for this month"}
-            </button>
+            </SubmitButton>
           </form>
         ) : null}
       </Card>

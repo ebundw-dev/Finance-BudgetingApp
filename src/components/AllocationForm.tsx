@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, currency, input as inputClass, table, td, th } from "@/lib/ui";
 
 export interface AllocationCategory {
@@ -81,9 +82,14 @@ export function AllocationForm({
         </table>
       </div>
 
-      <button type="submit" className={`${buttonPrimary} mt-4`} disabled={overAllocated}>
-        Allocate
-      </button>
+      <div className="mt-4 flex items-center gap-3">
+        <SubmitButton className={buttonPrimary} disabled={overAllocated} pendingLabel="Allocating…">
+          Allocate
+        </SubmitButton>
+        {overAllocated ? (
+          <span className="text-sm text-danger">Reduce amounts to match what&apos;s available.</span>
+        ) : null}
+      </div>
     </form>
   );
 }

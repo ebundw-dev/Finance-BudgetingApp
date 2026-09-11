@@ -4,6 +4,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { getDebt } from "@/lib/debts/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, currency, errorBanner, field, input, label as labelClass } from "@/lib/ui";
 
 export default async function EditDebtPage({
@@ -89,9 +90,7 @@ export default async function EditDebtPage({
               {error}
             </p>
           ) : null}
-          <button type="submit" className={buttonPrimary}>
-            Save
-          </button>
+          <SubmitButton className={buttonPrimary}>Save</SubmitButton>
         </form>
       </Card>
     </div>

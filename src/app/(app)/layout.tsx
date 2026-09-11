@@ -1,5 +1,9 @@
 import { Nav } from "@/components/Nav";
+import { SubmitButton } from "@/components/SubmitButton";
 import { logout } from "../login/actions";
+
+const signOutButton =
+  "text-text-secondary hover:bg-surface-hover hover:text-danger w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,12 +11,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Nav
         onSignOut={
           <form action={logout}>
-            <button
-              type="submit"
-              className="text-text-secondary hover:bg-surface-hover hover:text-danger w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors"
-            >
+            <SubmitButton className={signOutButton} pendingLabel="Signing out…">
               Sign out
-            </button>
+            </SubmitButton>
           </form>
         }
       />

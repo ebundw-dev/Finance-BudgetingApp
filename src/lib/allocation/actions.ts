@@ -34,7 +34,7 @@ export async function allocateAction(formData: FormData): Promise<void> {
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Allocation saved.")}`);
 }
 
 export async function applyRuleSetAction(formData: FormData): Promise<void> {
@@ -63,7 +63,7 @@ export async function applyRuleSetAction(formData: FormData): Promise<void> {
     throw error;
   }
 
-  redirect("/transactions");
+  redirect(`/transactions?success=${encodeURIComponent("Rule set applied.")}`);
 }
 
 export async function quickPayoutAction(formData: FormData): Promise<void> {
@@ -84,5 +84,5 @@ export async function quickPayoutAction(formData: FormData): Promise<void> {
     throw error;
   }
 
-  redirect("/allocate?priority=1");
+  redirect(`/allocate?priority=1&success=${encodeURIComponent("Payout recorded — now allocate it.")}`);
 }

@@ -6,14 +6,14 @@ import { allocateAction } from "@/lib/allocation/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { AllocationForm } from "@/components/AllocationForm";
-import { buttonSecondary, errorBanner } from "@/lib/ui";
+import { buttonSecondary, errorBanner, successBanner } from "@/lib/ui";
 
 export default async function AllocatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ priority?: string; error?: string }>;
+  searchParams: Promise<{ priority?: string; error?: string; success?: string }>;
 }) {
-  const { priority, error } = await searchParams;
+  const { priority, error, success } = await searchParams;
   const showPriorityOnly = priority === "1";
   const { userId } = await verifySession();
 
@@ -40,6 +40,12 @@ export default async function AllocatePage({
           Quick Payout Allocation
         </Link>
       </div>
+
+      {success ? (
+        <p role="status" className={successBanner}>
+          {success}
+        </p>
+      ) : null}
 
       {error ? (
         <p role="alert" className={errorBanner}>

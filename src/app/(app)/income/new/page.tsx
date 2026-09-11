@@ -4,6 +4,7 @@ import { listCashAccounts } from "@/lib/accounts/queries";
 import { recordIncomeAction } from "@/lib/transactions/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, link, select as selectClass } from "@/lib/ui";
 
 export default async function NewIncomePage({
@@ -84,9 +85,9 @@ export default async function NewIncomePage({
                 {error}
               </p>
             ) : null}
-            <button type="submit" className={buttonPrimary}>
+            <SubmitButton className={buttonPrimary} pendingLabel="Recording…">
               Record Income
-            </button>
+            </SubmitButton>
           </form>
         </Card>
       )}

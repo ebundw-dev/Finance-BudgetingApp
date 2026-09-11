@@ -5,6 +5,7 @@ import { getGoal } from "@/lib/goals/queries";
 import { listCategories } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonDanger, buttonPrimary, errorBanner, field, input, label as labelClass, select as selectClass } from "@/lib/ui";
 
 export default async function EditGoalPage({
@@ -79,16 +80,14 @@ export default async function EditGoalPage({
               {error}
             </p>
           ) : null}
-          <button type="submit" className={buttonPrimary}>
-            Save
-          </button>
+          <SubmitButton className={buttonPrimary}>Save</SubmitButton>
         </form>
       </Card>
       <form action={deleteGoal} className="mt-4">
         <input type="hidden" name="goalId" value={goal.id} />
-        <button type="submit" className={buttonDanger}>
+        <SubmitButton className={buttonDanger} pendingLabel="Deleting…">
           Delete Goal
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

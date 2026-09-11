@@ -10,6 +10,7 @@ import {
 } from "@/lib/transactions/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, link, select as selectClass } from "@/lib/ui";
 
 type TransactionType = "expense" | "transfer" | "debt-payment" | "reallocation";
@@ -141,9 +142,9 @@ async function ExpenseForm({ userId }: { userId: string }) {
         </label>
         <input id="source" name="source" type="text" className={input} />
       </div>
-      <button type="submit" className={buttonPrimary}>
+      <SubmitButton className={buttonPrimary} pendingLabel="Recording…">
         Record Expense
-      </button>
+      </SubmitButton>
     </form>
   );
 }
@@ -207,9 +208,9 @@ async function TransferForm({ userId }: { userId: string }) {
         </label>
         <input id="date" name="date" type="date" defaultValue={todayStr()} className={input} />
       </div>
-      <button type="submit" className={buttonPrimary}>
+      <SubmitButton className={buttonPrimary} pendingLabel="Recording…">
         Record Transfer
-      </button>
+      </SubmitButton>
     </form>
   );
 }
@@ -270,9 +271,9 @@ async function DebtPaymentForm({ userId }: { userId: string }) {
         </label>
         <input id="date" name="date" type="date" defaultValue={todayStr()} className={input} />
       </div>
-      <button type="submit" className={buttonPrimary}>
+      <SubmitButton className={buttonPrimary} pendingLabel="Recording…">
         Record Debt Payment
-      </button>
+      </SubmitButton>
     </form>
   );
 }
@@ -330,9 +331,9 @@ async function ReallocationForm({ userId }: { userId: string }) {
         </label>
         <input id="date" name="date" type="date" defaultValue={todayStr()} className={input} />
       </div>
-      <button type="submit" className={buttonPrimary}>
+      <SubmitButton className={buttonPrimary} pendingLabel="Moving…">
         Move Money
-      </button>
+      </SubmitButton>
     </form>
   );
 }

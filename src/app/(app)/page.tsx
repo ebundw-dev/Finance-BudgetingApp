@@ -4,6 +4,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { Card, StatCard } from "@/components/Card";
 import { ProgressBar } from "@/components/ProgressBar";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonSecondary, currency, select as selectClass } from "@/lib/ui";
 import { updatePhase } from "./actions";
 
@@ -26,9 +27,9 @@ export default async function Home() {
               </option>
             ))}
           </select>
-          <button type="submit" className={buttonSecondary}>
+          <SubmitButton className={buttonSecondary} pendingLabel="Updating…">
             Update
-          </button>
+          </SubmitButton>
         </form>
       </div>
 

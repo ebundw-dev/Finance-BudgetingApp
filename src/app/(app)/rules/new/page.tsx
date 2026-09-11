@@ -4,6 +4,7 @@ import { listCategories } from "@/lib/categories/queries";
 import { createRuleSet } from "@/lib/rules/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, link, select as selectClass } from "@/lib/ui";
 
 const ROW_COUNT = 8;
@@ -68,9 +69,9 @@ export default async function NewRuleSetPage({
                 {error}
               </p>
             ) : null}
-            <button type="submit" className={buttonPrimary}>
+            <SubmitButton className={buttonPrimary} pendingLabel="Creating…">
               Create Rule Set
-            </button>
+            </SubmitButton>
           </form>
         </Card>
       )}

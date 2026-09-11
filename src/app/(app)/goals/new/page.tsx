@@ -3,6 +3,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { listCategories } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, select as selectClass } from "@/lib/ui";
 
 export default async function NewGoalPage({
@@ -62,9 +63,9 @@ export default async function NewGoalPage({
               {error}
             </p>
           ) : null}
-          <button type="submit" className={buttonPrimary}>
+          <SubmitButton className={buttonPrimary} pendingLabel="Creating…">
             Create Goal
-          </button>
+          </SubmitButton>
         </form>
       </Card>
     </div>
