@@ -34,8 +34,15 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function Nav({ onSignOut }: { onSignOut: React.ReactNode }) {
+export function Nav({
+  onSignOut,
+  userEmail,
+}: {
+  onSignOut: React.ReactNode;
+  userEmail: string;
+}) {
   const pathname = usePathname();
+  const initial = userEmail.trim().charAt(0).toUpperCase() || "?";
 
   return (
     <nav className="sidebar-dark border-border flex shrink-0 flex-col gap-1 border-b p-3 md:h-screen md:w-64 md:overflow-y-auto md:border-r md:border-b-0 md:p-5">
@@ -63,7 +70,18 @@ export function Nav({ onSignOut }: { onSignOut: React.ReactNode }) {
           );
         })}
       </div>
-      <div className="md:mt-auto md:pt-4">{onSignOut}</div>
+      <div className="md:mt-auto md:pt-6">
+        <div className="border-border/60 flex items-center gap-2.5 rounded-lg border bg-surface/60 p-2.5">
+          <div className="bg-accent/20 text-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
+            {initial}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-text">{userEmail || "Signed in"}</p>
+            <p className="text-text-muted text-xs">Personal Ledger</p>
+          </div>
+          {onSignOut}
+        </div>
+      </div>
     </nav>
   );
 }
