@@ -256,3 +256,33 @@ export const months = pgTable(
     check("month_valid_range", sql`${table.month} >= 1 AND ${table.month} <= 12`),
   ]
 );
+
+// Per-goal-category balance at the time a month was snapshotted. Not
+// hardcoded to specific categories (e.g. "Car Fund") -- one row per
+// goal-type category that existed at snapshot time, so the progress page
+// can chart whichever goal categories the user actually has.
+export const monthCategorySnapshots = pgTable(
+  "month_category_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    monthId: uuid("month_id")
+      .notNull()
+      .references(() => months.id),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id),
+    allocatedBalance: numeric("allocated_balance", {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("month_category_snapshots_month_category_unique").on(
+      table.monthId,
+      table.categoryId
+    ),
+  ]
+);

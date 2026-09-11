@@ -26,7 +26,8 @@ export default async function Home() {
         <Link href="/allocate">Allocate</Link> |{" "}
         <Link href="/allocate/quick">Quick Payout Allocation</Link> |{" "}
         <Link href="/rules">Allocation Rule Sets</Link> | <Link href="/goals">Goals</Link> |{" "}
-        <Link href="/debts">Debts</Link>
+        <Link href="/debts">Debts</Link> | <Link href="/monthly">Monthly View</Link> |{" "}
+        <Link href="/progress">Progress</Link>
       </nav>
 
       <section>
