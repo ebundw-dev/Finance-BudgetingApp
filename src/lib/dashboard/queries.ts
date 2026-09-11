@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { accounts, categories, debts, transactions, users } from "@/db/schema";
 import { getAllocatedThisMonthByCategory } from "@/lib/categories/queries";
 import type { TargetType } from "@/lib/categories/targets";
+import { getDueAndUpcomingCounts } from "@/lib/scheduled/queries";
 
 export interface GoalCategoryProgress {
   id: string;
@@ -31,6 +32,8 @@ export interface DashboardData {
   debtPaidThisMonth: string;
   goalProgress: GoalCategoryProgress[];
   earmarked: EarmarkedCategory[];
+  dueScheduledCount: number;
+  upcomingScheduledCount: number;
 }
 
 function currentMonthRange(): { start: string; end: string } {
@@ -44,8 +47,16 @@ function currentMonthRange(): { start: string; end: string } {
 export async function getDashboardData(userId: string): Promise<DashboardData> {
   const { start, end } = currentMonthRange();
 
-  const [[user], [cashRow], [allocatedRow], [debtRow], [monthlyRow], goalCategories, allocatedThisMonth] =
-    await Promise.all([
+  const [
+    [user],
+    [cashRow],
+    [allocatedRow],
+    [debtRow],
+    [monthlyRow],
+    goalCategories,
+    allocatedThisMonth,
+    { dueCount, upcomingCount },
+  ] = await Promise.all([
       db.select({ phase: users.phase }).from(users).where(eq(users.id, userId)),
       db
         .select({
@@ -93,6 +104,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
         .where(and(eq(categories.userId, userId), eq(categories.categoryType, "goal")))
         .orderBy(categories.sortOrder),
       getAllocatedThisMonthByCategory(userId),
+      getDueAndUpcomingCounts(userId),
     ]);
 
   const totalCash = cashRow.totalCash;
@@ -138,5 +150,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     debtPaidThisMonth: monthlyRow.debtPaid,
     goalProgress,
     earmarked,
+    dueScheduledCount: dueCount,
+    upcomingScheduledCount: upcomingCount,
   };
 }

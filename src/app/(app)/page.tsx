@@ -8,6 +8,7 @@ import {
   ArrowUpCircle,
   CheckCircle2,
   Target,
+  Bell,
 } from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
@@ -33,6 +34,38 @@ export default async function Home() {
         />
         <PhaseForm initialPhase={data.phase} />
       </div>
+
+      {data.dueScheduledCount > 0 || data.upcomingScheduledCount > 0 ? (
+        <Link href="/scheduled" className="mb-6 block">
+          <Card
+            className={`transition-colors hover:bg-surface-hover ${
+              data.dueScheduledCount > 0 ? "ring-1 ring-danger/30" : "ring-1 ring-warning/30"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                  data.dueScheduledCount > 0 ? "bg-danger/12 text-danger" : "bg-warning/12 text-warning"
+                }`}
+              >
+                <Bell size={18} strokeWidth={2} />
+              </div>
+              <div>
+                <div className="font-medium text-text">
+                  {data.dueScheduledCount > 0
+                    ? `${data.dueScheduledCount} scheduled transaction${data.dueScheduledCount === 1 ? "" : "s"} due`
+                    : `${data.upcomingScheduledCount} scheduled transaction${data.upcomingScheduledCount === 1 ? "" : "s"} coming up`}
+                </div>
+                <p className="text-text-secondary text-xs">
+                  {data.dueScheduledCount > 0 && data.upcomingScheduledCount > 0
+                    ? `Plus ${data.upcomingScheduledCount} more within 7 days. Tap to review.`
+                    : "Tap to review, confirm, or skip."}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      ) : null}
 
       <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Cash" value={currency(data.totalCash)} tone="accent" icon={Wallet} />
