@@ -182,6 +182,15 @@ export const categories = pgTable(
 //   transfer                 -> accountId = from account, relatedAccountId = to account
 //   category_reallocation    -> categoryId = from category, relatedCategoryId = to category
 // amount is always stored positive; direction is derived from `type` in the accounting engine.
+//
+// Split expenses: only "expense" rows can be split (one card swipe/receipt
+// across multiple categories). A split expense keeps categoryId null on the
+// parent row -- null here means "look at transaction_splits for the
+// per-category breakdown" instead of "spent category". relatedCategoryId
+// still carries the credit-card debt reserve category when applicable,
+// since every split of one transaction shares the same account and
+// therefore the same reserve category. See transactionSplits below and
+// recordSplitExpense/updateSplitExpense in accounting/engine.ts.
 export const transactions = pgTable(
   "transactions",
   {
@@ -207,6 +216,26 @@ export const transactions = pgTable(
       .defaultNow(),
   },
   (table) => [check("amount_positive", sql`${table.amount} > 0`)]
+);
+
+// Per-category breakdown for a split expense (see the comment on
+// transactions above). The sum of a transaction's splits must equal its
+// parent transactions.amount exactly -- enforced in the accounting engine
+// (recordSplitExpense/updateSplitExpense), not a DB constraint, since a
+// CHECK can't aggregate across rows.
+export const transactionSplits = pgTable(
+  "transaction_splits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => transactions.id),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  },
+  (table) => [check("transaction_split_amount_positive", sql`${table.amount} > 0`)]
 );
 
 // A template for a future transactions row -- "Embrace Your True

@@ -43,6 +43,13 @@
       "when": 1789166720198,
       "tag": "0005_solid_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789169181332,
+      "tag": "0006_deep_george_stacy",
+      "breakpoints": true
     }
   ]
 }
