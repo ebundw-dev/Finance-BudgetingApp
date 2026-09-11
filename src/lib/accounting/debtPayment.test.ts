@@ -118,6 +118,67 @@ describe("recordDebtPayment", () => {
     });
   });
 
+  it("a card purchase followed by only a partial payment leaves the remainder owed and reserved", async () => {
+    await withRollback(async (tx) => {
+      const user = await createTestUser(tx);
+      const cashAccount = await createTestAccount(tx, user.id, {
+        currentBalance: "500.00",
+      });
+      const cardAccount = await createTestAccount(tx, user.id, {
+        type: "credit_card",
+        isCashAccount: false,
+        currentBalance: "0",
+      });
+      const debt = await createTestDebt(tx, user.id, cardAccount.id);
+      const category = await createTestCategory(tx, user.id, {
+        allocatedBalance: "100.00",
+      });
+
+      // Purchase: $100 charged.
+      await recordExpense(tx, user.id, {
+        accountId: cardAccount.id,
+        categoryId: category.id,
+        amount: "100.00",
+        date: "2026-01-01",
+      });
+
+      // Only $40 of the $100 owed gets paid this cycle.
+      await recordDebtPayment(tx, user.id, {
+        fromAccountId: cashAccount.id,
+        debtAccountId: cardAccount.id,
+        amount: "40.00",
+        date: "2026-01-05",
+      });
+
+      const [updatedCash] = await tx
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, cashAccount.id));
+      const [updatedCard] = await tx
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, cardAccount.id));
+      const [updatedCategory] = await tx
+        .select()
+        .from(categories)
+        .where(eq(categories.id, category.id));
+      const [reserveCategory] = await tx
+        .select()
+        .from(categories)
+        .where(eq(categories.id, debt.categoryId));
+
+      // The spending category was already debited in full at purchase
+      // time and is untouched by a payment of any size.
+      expect(updatedCategory.allocatedBalance).toBe("0.00");
+      // Cash only drops by what was actually paid.
+      expect(updatedCash.currentBalance).toBe("460.00");
+      // $60 of the original $100 remains owed, and still reserved --
+      // the two keep tracking each other under a partial payment too.
+      expect(updatedCard.currentBalance).toBe("60.00");
+      expect(reserveCategory.allocatedBalance).toBe("60.00");
+    });
+  });
+
   it("rejects paying more than is reserved for a debt", async () => {
     await withRollback(async (tx) => {
       const user = await createTestUser(tx);
