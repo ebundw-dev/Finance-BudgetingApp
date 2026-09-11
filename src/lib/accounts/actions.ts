@@ -1,9 +1,9 @@
 "use server";
 
-import { and, eq, ilike } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { accounts, accountTypeEnum, categories, categoryGroups, debts } from "@/db/schema";
+import { accounts, accountTypeEnum, categories, categoryGroups, debts, transactions } from "@/db/schema";
 import { verifySession } from "@/lib/auth/dal";
 
 const ACCOUNT_TYPES = new Set(accountTypeEnum.enumValues);
@@ -74,6 +74,55 @@ export async function createAccount(formData: FormData): Promise<void> {
       });
     }
   });
+
+  redirect("/accounts");
+}
+
+// Hard delete is only safe for an account with nothing riding on it: a
+// nonzero balance is real money (or real debt) that has to go somewhere
+// first, and any transaction or debt-tracking link would either orphan
+// history or hit the DB's FK constraint. There's no archive alternative
+// for accounts (unlike categories) since one wasn't asked for here --
+// this covers the "created it by mistake, never used it" case.
+export async function deleteAccount(formData: FormData): Promise<void> {
+  const { userId } = await verifySession();
+  const accountId = String(formData.get("accountId") ?? "");
+
+  const [account] = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+  if (!account) {
+    redirect("/accounts");
+  }
+
+  if (Number(account.currentBalance) !== 0) {
+    redirect(
+      `/accounts?error=${encodeURIComponent(
+        `"${account.name}" still has a balance -- bring it to $0 (transfer, pay off, or spend down) before deleting.`
+      )}`
+    );
+  }
+
+  const [debtRef] = await db.select({ id: debts.id }).from(debts).where(eq(debts.accountId, accountId)).limit(1);
+  if (debtRef) {
+    redirect(
+      `/accounts?error=${encodeURIComponent(`"${account.name}" is tracked as a debt and can't be deleted.`)}`
+    );
+  }
+
+  const [txnRef] = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(or(eq(transactions.accountId, accountId), eq(transactions.relatedAccountId, accountId)))
+    .limit(1);
+  if (txnRef) {
+    redirect(
+      `/accounts?error=${encodeURIComponent(`"${account.name}" has transaction history and can't be deleted.`)}`
+    );
+  }
+
+  await db.delete(accounts).where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
 
   redirect("/accounts");
 }

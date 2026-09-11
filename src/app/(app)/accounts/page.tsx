@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { listAccounts } from "@/lib/accounts/queries";
+import { deleteAccount } from "@/lib/accounts/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
-import { buttonPrimary, currency } from "@/lib/ui";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { buttonPrimary, currency, errorBanner } from "@/lib/ui";
 
 const TYPE_LABELS: Record<string, string> = {
   checking: "Checking",
@@ -41,9 +43,13 @@ const TYPE_BADGE: Record<string, string> = {
   other: "bg-text-secondary/10 text-text-secondary",
 };
 
-export default async function AccountsPage() {
+export default async function AccountsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { userId } = await verifySession();
-  const accounts = await listAccounts(userId);
+  const [accounts, { error }] = await Promise.all([listAccounts(userId), searchParams]);
 
   return (
     <div>
@@ -57,6 +63,11 @@ export default async function AccountsPage() {
           Add account
         </Link>
       </div>
+      {error ? (
+        <p role="alert" className={errorBanner}>
+          {error}
+        </p>
+      ) : null}
       {accounts.length === 0 ? (
         <Card>
           <p className="text-sm text-text-muted">No accounts yet.</p>
@@ -72,11 +83,17 @@ export default async function AccountsPage() {
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${badge}`}>
                     <Icon size={18} strokeWidth={2} />
                   </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badge}`}
-                  >
-                    {TYPE_LABELS[account.type] ?? account.type}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badge}`}
+                    >
+                      {TYPE_LABELS[account.type] ?? account.type}
+                    </span>
+                    <form action={deleteAccount}>
+                      <input type="hidden" name="accountId" value={account.id} />
+                      <ConfirmDeleteButton label={`Delete ${account.name}`} iconOnly />
+                    </form>
+                  </div>
                 </div>
                 <h2 className="mb-3 font-medium text-text">{account.name}</h2>
                 <div className="flex items-baseline justify-between">

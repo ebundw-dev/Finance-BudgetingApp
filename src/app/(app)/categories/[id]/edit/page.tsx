@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { priorityEnum } from "@/db/schema";
-import { updateCategory } from "@/lib/categories/actions";
+import { deleteCategory, updateCategory } from "@/lib/categories/actions";
 import { verifySession } from "@/lib/auth/dal";
 import { getCategory } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { SubmitButton } from "@/components/SubmitButton";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import {
   buttonPrimary,
   checkbox,
@@ -105,6 +106,10 @@ export default async function EditCategoryPage({
           <SubmitButton className={buttonPrimary}>Save</SubmitButton>
         </form>
       </Card>
+      <form action={deleteCategory} className="mt-4">
+        <input type="hidden" name="categoryId" value={category.id} />
+        <ConfirmDeleteButton label="Delete Category" />
+      </form>
     </div>
   );
 }
