@@ -48,12 +48,17 @@ export async function updateCategory(formData: FormData): Promise<void> {
   const { userId } = await verifySession();
 
   const categoryId = String(formData.get("categoryId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
   const targetAmountRaw = String(formData.get("targetAmount") ?? "").trim();
   const priorityRaw = String(formData.get("priority") ?? "").trim();
+  const isArchived = formData.get("isArchived") === "on";
 
   const targetAmount = targetAmountRaw === "" ? null : targetAmountRaw;
   const priority = priorityRaw === "" ? null : priorityRaw;
 
+  if (!name) {
+    redirect(`/categories/${categoryId}/edit?error=${encodeURIComponent("Name is required.")}`);
+  }
   if (targetAmount !== null && Number.isNaN(Number(targetAmount))) {
     redirect(
       `/categories/${categoryId}/edit?error=${encodeURIComponent("Target amount must be a number.")}`
@@ -66,8 +71,10 @@ export async function updateCategory(formData: FormData): Promise<void> {
   await db
     .update(categories)
     .set({
+      name,
       targetAmount,
       priority: priority as (typeof priorityEnum.enumValues)[number] | null,
+      isArchived,
     })
     .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)));
 

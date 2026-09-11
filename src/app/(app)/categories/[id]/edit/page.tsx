@@ -5,7 +5,17 @@ import { verifySession } from "@/lib/auth/dal";
 import { getCategory } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
-import { buttonPrimary, errorBanner, field, input, label as labelClass, select as selectClass } from "@/lib/ui";
+import {
+  buttonPrimary,
+  checkbox,
+  checkboxRow,
+  currency,
+  errorBanner,
+  field,
+  input,
+  label as labelClass,
+  select as selectClass,
+} from "@/lib/ui";
 
 export default async function EditCategoryPage({
   params,
@@ -29,6 +39,22 @@ export default async function EditCategoryPage({
       <Card className="max-w-md">
         <form action={updateCategory}>
           <input type="hidden" name="categoryId" value={category.id} />
+          <div className={field}>
+            <label htmlFor="name" className={labelClass}>
+              Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              required
+              defaultValue={category.name}
+              className={input}
+            />
+          </div>
+          <p className="mb-4 text-sm text-text-muted">
+            Current balance: {currency(category.allocatedBalance)}
+          </p>
           <div className={field}>
             <label htmlFor="targetAmount" className={labelClass}>
               Target amount (leave blank for none)
@@ -60,6 +86,16 @@ export default async function EditCategoryPage({
               ))}
             </select>
           </div>
+          <label className={checkboxRow}>
+            <input
+              type="checkbox"
+              name="isArchived"
+              defaultChecked={category.isArchived}
+              className={checkbox}
+            />
+            Archive (hides it from Categories, allocation, and Quick Payout — balance is
+            preserved and still counts toward Unallocated Cash)
+          </label>
           {error ? (
             <p role="alert" className={errorBanner}>
               {error}

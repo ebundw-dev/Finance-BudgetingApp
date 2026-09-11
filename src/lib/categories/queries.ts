@@ -31,6 +31,14 @@ export async function listCategoryGroupsWithCategories(
   }));
 }
 
+export async function listArchivedCategories(userId: string) {
+  return db
+    .select()
+    .from(categories)
+    .where(and(eq(categories.userId, userId), eq(categories.isArchived, true)))
+    .orderBy(asc(categories.name));
+}
+
 export async function listCategoryGroups(userId: string) {
   return db
     .select()

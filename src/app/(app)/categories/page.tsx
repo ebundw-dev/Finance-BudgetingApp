@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/auth/dal";
-import { listCategoryGroupsWithCategories } from "@/lib/categories/queries";
+import { listArchivedCategories, listCategoryGroupsWithCategories } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { buttonPrimary, currency, link, table, td, th } from "@/lib/ui";
 
 export default async function CategoriesPage() {
   const { userId } = await verifySession();
-  const groups = await listCategoryGroupsWithCategories(userId);
+  const [groups, archived] = await Promise.all([
+    listCategoryGroupsWithCategories(userId),
+    listArchivedCategories(userId),
+  ]);
 
   return (
     <div>
@@ -63,6 +66,39 @@ export default async function CategoriesPage() {
             )}
           </Card>
         ))}
+        {archived.length > 0 ? (
+          <Card padded={false}>
+            <h2 className="border-b border-border px-5 py-3 text-sm font-medium tracking-wide text-text-secondary uppercase">
+              Archived
+            </h2>
+            <div className="overflow-x-auto">
+              <table className={table}>
+                <thead>
+                  <tr>
+                    <th className={th}>Name</th>
+                    <th className={th}>Balance</th>
+                    <th className={th}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {archived.map((category) => (
+                    <tr key={category.id}>
+                      <td className={`${td} text-text-muted`}>{category.name}</td>
+                      <td className={`${td} tabular-nums text-text-muted`}>
+                        {currency(category.allocatedBalance)}
+                      </td>
+                      <td className={td}>
+                        <Link href={`/categories/${category.id}/edit`} className={link}>
+                          Edit / Unarchive
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        ) : null}
       </div>
     </div>
   );
