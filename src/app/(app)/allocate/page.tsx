@@ -24,7 +24,11 @@ export default async function AllocatePage({
 
   return (
     <div>
-      <PageHeader title="Allocate" />
+      <PageHeader
+        eyebrow="Assign cash"
+        title="Allocate."
+        subtitle="Give every dollar a job before it has a chance to disappear."
+      />
 
       <div className="mb-6 flex flex-wrap gap-2">
         <Link
