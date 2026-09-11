@@ -2,11 +2,17 @@ import "server-only";
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, categories, debts, transactions, users } from "@/db/schema";
+import { getAllocatedThisMonthByCategory } from "@/lib/categories/queries";
+import type { TargetType } from "@/lib/categories/targets";
 
 export interface GoalCategoryProgress {
+  id: string;
   name: string;
   allocatedBalance: string;
+  targetType: TargetType;
   targetAmount: string;
+  targetDate: string | null;
+  allocatedThisMonth: string;
 }
 
 export interface EarmarkedCategory {
@@ -38,7 +44,7 @@ function currentMonthRange(): { start: string; end: string } {
 export async function getDashboardData(userId: string): Promise<DashboardData> {
   const { start, end } = currentMonthRange();
 
-  const [[user], [cashRow], [allocatedRow], [debtRow], [monthlyRow], goalCategories] =
+  const [[user], [cashRow], [allocatedRow], [debtRow], [monthlyRow], goalCategories, allocatedThisMonth] =
     await Promise.all([
       db.select({ phase: users.phase }).from(users).where(eq(users.id, userId)),
       db
@@ -76,13 +82,17 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
         ),
       db
         .select({
+          id: categories.id,
           name: categories.name,
           allocatedBalance: categories.allocatedBalance,
+          targetType: categories.targetType,
           targetAmount: categories.targetAmount,
+          targetDate: categories.targetDate,
         })
         .from(categories)
         .where(and(eq(categories.userId, userId), eq(categories.categoryType, "goal")))
         .orderBy(categories.sortOrder),
+      getAllocatedThisMonthByCategory(userId),
     ]);
 
   const totalCash = cashRow.totalCash;
@@ -90,20 +100,24 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
   const unallocatedCash = (Number(totalCash) - Number(allocatedRow.totalAllocated)).toFixed(2);
   const netFinancialPosition = (Number(totalCash) - Number(totalDebt)).toFixed(2);
 
-  // A goal category with a target amount gets a progress bar (Emergency
-  // Fund, Car Fund, Move-Out Fund...); one without a target is shown as a
-  // flat "earmarked" balance instead (Investments, which doesn't have a
-  // fixed target the way a savings goal does). Driven by whether
-  // target_amount is set, not by category name, so this holds regardless
-  // of how the user renames or adds categories later.
+  // A goal category with a target type gets shown against that target
+  // (see src/lib/categories/targets.ts for the three flavors); one without
+  // a target is shown as a flat "earmarked" balance instead (Investments,
+  // which doesn't have a fixed target the way a savings goal does). Driven
+  // by whether target_type is set, not by category name, so this holds
+  // regardless of how the user renames or adds categories later.
   const goalProgress: GoalCategoryProgress[] = [];
   const earmarked: EarmarkedCategory[] = [];
   for (const category of goalCategories) {
-    if (category.targetAmount !== null) {
+    if (category.targetType !== null && category.targetAmount !== null) {
       goalProgress.push({
+        id: category.id,
         name: category.name,
         allocatedBalance: category.allocatedBalance,
+        targetType: category.targetType,
         targetAmount: category.targetAmount,
+        targetDate: category.targetDate,
+        allocatedThisMonth: allocatedThisMonth[category.id] ?? "0",
       });
     } else {
       earmarked.push({

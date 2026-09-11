@@ -11,12 +11,16 @@ import {
   debts,
   goals,
   priorityEnum,
+  targetCadenceEnum,
+  targetTypeEnum,
   transactions,
 } from "@/db/schema";
 import { verifySession } from "@/lib/auth/dal";
 
 const CATEGORY_TYPES = new Set(categoryTypeEnum.enumValues);
 const PRIORITIES = new Set(priorityEnum.enumValues);
+const TARGET_TYPES = new Set(targetTypeEnum.enumValues);
+const TARGET_CADENCES = new Set(targetCadenceEnum.enumValues);
 
 export async function createCategoryGroup(formData: FormData): Promise<void> {
   const { userId } = await verifySession();
@@ -58,30 +62,71 @@ export async function updateCategory(formData: FormData): Promise<void> {
 
   const categoryId = String(formData.get("categoryId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const targetTypeRaw = String(formData.get("targetType") ?? "").trim();
   const targetAmountRaw = String(formData.get("targetAmount") ?? "").trim();
+  const targetCadenceRaw = String(formData.get("targetCadence") ?? "").trim();
+  const targetDateRaw = String(formData.get("targetDate") ?? "").trim();
   const priorityRaw = String(formData.get("priority") ?? "").trim();
   const isArchived = formData.get("isArchived") === "on";
 
-  const targetAmount = targetAmountRaw === "" ? null : targetAmountRaw;
   const priority = priorityRaw === "" ? null : priorityRaw;
 
   if (!name) {
     redirect(`/categories/${categoryId}/edit?error=${encodeURIComponent("Name is required.")}`);
   }
-  if (targetAmount !== null && Number.isNaN(Number(targetAmount))) {
-    redirect(
-      `/categories/${categoryId}/edit?error=${encodeURIComponent("Target amount must be a number.")}`
-    );
-  }
   if (priority !== null && !PRIORITIES.has(priority as (typeof priorityEnum.enumValues)[number])) {
     redirect(`/categories/${categoryId}/edit?error=${encodeURIComponent("Invalid priority.")}`);
+  }
+
+  // targetType drives which of targetAmount/targetCadence/targetDate are
+  // relevant -- see the categories table comment in schema.ts. The other
+  // fields are cleared to null rather than left with stale values from a
+  // previously-selected type.
+  let targetType: (typeof targetTypeEnum.enumValues)[number] | null = null;
+  let targetAmount: string | null = null;
+  let targetCadence: (typeof targetCadenceEnum.enumValues)[number] | null = null;
+  let targetDate: string | null = null;
+
+  if (targetTypeRaw !== "") {
+    if (!TARGET_TYPES.has(targetTypeRaw as (typeof targetTypeEnum.enumValues)[number])) {
+      redirect(`/categories/${categoryId}/edit?error=${encodeURIComponent("Invalid target type.")}`);
+    }
+    targetType = targetTypeRaw as (typeof targetTypeEnum.enumValues)[number];
+
+    if (targetAmountRaw === "" || Number.isNaN(Number(targetAmountRaw)) || Number(targetAmountRaw) <= 0) {
+      redirect(
+        `/categories/${categoryId}/edit?error=${encodeURIComponent(
+          "A positive target amount is required for a target type."
+        )}`
+      );
+    }
+    targetAmount = targetAmountRaw;
+
+    if (targetType === "refill_up_to" && targetCadenceRaw !== "") {
+      if (!TARGET_CADENCES.has(targetCadenceRaw as (typeof targetCadenceEnum.enumValues)[number])) {
+        redirect(`/categories/${categoryId}/edit?error=${encodeURIComponent("Invalid cadence.")}`);
+      }
+      targetCadence = targetCadenceRaw as (typeof targetCadenceEnum.enumValues)[number];
+    }
+
+    if (targetType === "by_date") {
+      if (targetDateRaw === "") {
+        redirect(
+          `/categories/${categoryId}/edit?error=${encodeURIComponent("A target date is required for By Date.")}`
+        );
+      }
+      targetDate = targetDateRaw;
+    }
   }
 
   await db
     .update(categories)
     .set({
       name,
+      targetType,
       targetAmount,
+      targetCadence,
+      targetDate,
       priority: priority as (typeof priorityEnum.enumValues)[number] | null,
       isArchived,
     })

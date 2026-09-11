@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
+import { getCategoryFundingStatus } from "@/lib/categories/targets";
 import { Card, StatCard } from "@/components/Card";
-import { ProgressBar } from "@/components/ProgressBar";
+import { CategoryFundingCell } from "@/components/CategoryFundingCell";
 import { PhaseForm } from "@/components/PhaseForm";
 import { PageHeader } from "@/components/PageHeader";
 import { currency } from "@/lib/ui";
@@ -92,23 +93,30 @@ export default async function Home() {
           ) : (
             <ul className="space-y-6">
               {data.goalProgress.map((goal) => {
-                const percent = Math.round(
-                  (Number(goal.allocatedBalance) / Number(goal.targetAmount)) * 100
-                );
+                const status = getCategoryFundingStatus({
+                  targetType: goal.targetType,
+                  targetAmount: goal.targetAmount,
+                  targetDate: goal.targetDate,
+                  allocatedBalance: goal.allocatedBalance,
+                  allocatedThisMonth: goal.allocatedThisMonth,
+                });
                 return (
-                  <li key={goal.name} className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent">
+                  <li key={goal.id} className="flex items-start gap-3">
+                    <div
+                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        status?.underfunded ? "bg-danger/12 text-danger" : "bg-accent/12 text-accent"
+                      }`}
+                    >
                       <Target size={16} strokeWidth={2} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-baseline justify-between gap-2 text-sm">
-                        <span className="font-medium text-text">{goal.name}</span>
-                        <span className="tabular-nums text-text-secondary">
-                          {currency(goal.allocatedBalance)} of {currency(goal.targetAmount)} (
-                          {percent}%)
-                        </span>
-                      </div>
-                      <ProgressBar percent={percent} />
+                      <div className="mb-1.5 text-sm font-medium text-text">{goal.name}</div>
+                      <CategoryFundingCell
+                        status={status}
+                        allocatedBalance={goal.allocatedBalance}
+                        targetAmount={goal.targetAmount}
+                        targetDate={goal.targetDate}
+                      />
                     </div>
                   </li>
                 );

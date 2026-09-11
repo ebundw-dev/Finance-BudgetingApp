@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { CategoryTargetFields } from "@/components/CategoryTargetFields";
 import {
   buttonPrimary,
   checkbox,
@@ -57,19 +58,12 @@ export default async function EditCategoryPage({
           <p className="mb-4 text-sm text-text-muted">
             Current balance: {currency(category.allocatedBalance)}
           </p>
-          <div className={field}>
-            <label htmlFor="targetAmount" className={labelClass}>
-              Target amount (leave blank for none)
-            </label>
-            <input
-              id="targetAmount"
-              name="targetAmount"
-              type="text"
-              inputMode="decimal"
-              defaultValue={category.targetAmount ?? ""}
-              className={input}
-            />
-          </div>
+          <CategoryTargetFields
+            initialType={category.targetType}
+            initialAmount={category.targetAmount}
+            initialCadence={category.targetCadence}
+            initialDate={category.targetDate}
+          />
           <div className={field}>
             <label htmlFor="priority" className={labelClass}>
               Priority (used by Quick Payout Allocation)

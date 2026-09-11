@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/auth/dal";
-import { listArchivedCategories, listCategoryGroupsWithCategories } from "@/lib/categories/queries";
+import {
+  getAllocatedThisMonthByCategory,
+  listArchivedCategories,
+  listCategoryGroupsWithCategories,
+} from "@/lib/categories/queries";
+import { getCategoryFundingStatus } from "@/lib/categories/targets";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
-import { ProgressBar } from "@/components/ProgressBar";
+import { CategoryFundingCell } from "@/components/CategoryFundingCell";
 import { buttonPrimary, currency, link, table, td, th } from "@/lib/ui";
 
 const TYPE_BADGE: Record<string, string> = {
@@ -20,9 +25,10 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 export default async function CategoriesPage() {
   const { userId } = await verifySession();
-  const [groups, archived] = await Promise.all([
+  const [groups, archived, allocatedThisMonth] = await Promise.all([
     listCategoryGroupsWithCategories(userId),
     listArchivedCategories(userId),
+    getAllocatedThisMonthByCategory(userId),
   ]);
 
   return (
@@ -53,17 +59,19 @@ export default async function CategoriesPage() {
                       <th className={th}>Name</th>
                       <th className={th}>Type</th>
                       <th className={th}>Priority</th>
-                      <th className={th}>Balance</th>
+                      <th className={th}>Target</th>
                       <th className={th}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {group.categories.map((category) => {
-                      const percent = category.targetAmount
-                        ? Math.round(
-                            (Number(category.allocatedBalance) / Number(category.targetAmount)) * 100
-                          )
-                        : null;
+                      const status = getCategoryFundingStatus({
+                        targetType: category.targetType,
+                        targetAmount: category.targetAmount,
+                        targetDate: category.targetDate,
+                        allocatedBalance: category.allocatedBalance,
+                        allocatedThisMonth: allocatedThisMonth[category.id] ?? "0",
+                      });
                       return (
                         <tr key={category.id} className="hover:bg-surface-hover/60 transition-colors">
                           <td className={td}>{category.name}</td>
@@ -85,18 +93,13 @@ export default async function CategoriesPage() {
                               <span className="text-text-muted">—</span>
                             )}
                           </td>
-                          <td className={`${td} tabular-nums`}>
-                            {percent !== null ? (
-                              <div className="min-w-32">
-                                <div className="mb-1 flex justify-between text-xs text-text-secondary">
-                                  <span>{currency(category.allocatedBalance)}</span>
-                                  <span>of {currency(category.targetAmount!)}</span>
-                                </div>
-                                <ProgressBar percent={percent} />
-                              </div>
-                            ) : (
-                              currency(category.allocatedBalance)
-                            )}
+                          <td className={td}>
+                            <CategoryFundingCell
+                              status={status}
+                              allocatedBalance={category.allocatedBalance}
+                              targetAmount={category.targetAmount}
+                              targetDate={category.targetDate}
+                            />
                           </td>
                           <td className={td}>
                             <Link href={`/categories/${category.id}/edit`} className={link}>

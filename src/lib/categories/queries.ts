@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, categoryGroups } from "@/db/schema";
+import { categories, categoryGroups, transactions } from "@/db/schema";
 
 export interface CategoryGroupWithCategories {
   id: string;
@@ -78,4 +78,43 @@ export async function getCategory(userId: string, categoryId: string) {
     .from(categories)
     .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)));
   return category;
+}
+
+// How much has been allocated into each category so far this calendar
+// month -- what a "set_aside_monthly" or "by_date" target's funded status
+// is measured against (unlike allocatedBalance, which carries over and
+// never resets, so it can't tell "already funded this month" from "funded
+// two months ago and never spent since"). See src/lib/categories/targets.ts.
+export async function getAllocatedThisMonthByCategory(
+  userId: string
+): Promise<Record<string, string>> {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    .toISOString()
+    .slice(0, 10);
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    .toISOString()
+    .slice(0, 10);
+
+  const rows = await db
+    .select({
+      categoryId: transactions.categoryId,
+      total: sql<string>`coalesce(sum(${transactions.amount}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, "allocation"),
+        gte(transactions.date, start),
+        lt(transactions.date, end)
+      )
+    )
+    .groupBy(transactions.categoryId);
+
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    if (row.categoryId) result[row.categoryId] = row.total;
+  }
+  return result;
 }
