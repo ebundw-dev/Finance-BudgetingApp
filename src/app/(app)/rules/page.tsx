@@ -20,9 +20,13 @@ export default async function RulesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <PageHeader title="Allocation Rule Sets" />
-        <Link href="/rules/new" className={buttonPrimary}>
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Split it automatically"
+          title="Rule Sets."
+          subtitle="Percentages you trust enough to stop thinking about."
+        />
+        <Link href="/rules/new" className={`${buttonPrimary} mt-1`}>
           Add rule set
         </Link>
       </div>
@@ -33,7 +37,7 @@ export default async function RulesPage() {
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {ruleSets.map((ruleSet) => (
             <Card key={ruleSet.name}>
               <div className="mb-3 flex items-center justify-between">
