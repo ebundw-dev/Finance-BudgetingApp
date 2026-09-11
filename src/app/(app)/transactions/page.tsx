@@ -15,12 +15,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_BADGE: Record<string, string> = {
-  income: "bg-success/15 text-success",
-  allocation: "bg-accent/15 text-accent",
-  expense: "bg-danger/15 text-danger",
-  debt_payment: "bg-warning/15 text-warning",
-  transfer: "bg-surface-hover text-text-secondary",
-  category_reallocation: "bg-surface-hover text-text-secondary",
+  income: "bg-success/12 text-success",
+  allocation: "bg-accent/12 text-accent",
+  expense: "bg-danger/12 text-danger",
+  debt_payment: "bg-warning/12 text-warning",
+  transfer: "bg-text-secondary/10 text-text-secondary",
+  category_reallocation: "bg-text-secondary/10 text-text-secondary",
 };
 
 export default async function TransactionsPage({
@@ -33,9 +33,13 @@ export default async function TransactionsPage({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title="Transactions" />
-        <div className="flex flex-wrap gap-2">
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Every dollar, accounted for"
+          title="Transactions."
+          subtitle="The full record — nothing hidden, nothing rounded away."
+        />
+        <div className="mt-1 flex flex-wrap gap-2">
           <Link href="/income/new" className={buttonSecondary}>
             Record income
           </Link>
