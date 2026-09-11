@@ -8,7 +8,10 @@ import {
   recordDebtPayment,
   recordExpense,
   recordIncome,
+  recordSplitExpense,
   recordTransfer,
+  updateSplitExpense,
+  type SplitItem,
 } from "@/lib/accounting/engine";
 import { verifySession } from "@/lib/auth/dal";
 
@@ -18,6 +21,15 @@ function field(formData: FormData, name: string): string {
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function splitsField(formData: FormData): SplitItem[] {
+  const categoryIds = formData.getAll("splitCategoryId[]").map(String);
+  const amounts = formData.getAll("splitAmount[]").map(String);
+  return categoryIds.map((categoryId, i) => ({
+    categoryId,
+    amount: (amounts[i] ?? "").trim(),
+  }));
 }
 
 export async function recordIncomeAction(formData: FormData): Promise<void> {
@@ -63,6 +75,53 @@ export async function recordExpenseAction(formData: FormData): Promise<void> {
   }
 
   redirect(`/transactions?success=${encodeURIComponent("Expense recorded.")}`);
+}
+
+export async function recordSplitExpenseAction(formData: FormData): Promise<void> {
+  const { userId } = await verifySession();
+  const params = {
+    accountId: field(formData, "accountId"),
+    splits: splitsField(formData),
+    amount: field(formData, "amount"),
+    date: field(formData, "date") || today(),
+    source: field(formData, "source") || undefined,
+    notes: field(formData, "notes") || undefined,
+  };
+
+  try {
+    await db.transaction((tx) => recordSplitExpense(tx, userId, params));
+  } catch (error) {
+    if (error instanceof AccountingError) {
+      redirect(`/transactions/new?type=expense&error=${encodeURIComponent(error.message)}`);
+    }
+    throw error;
+  }
+
+  redirect(`/transactions?success=${encodeURIComponent("Split expense recorded.")}`);
+}
+
+export async function updateSplitExpenseAction(formData: FormData): Promise<void> {
+  const { userId } = await verifySession();
+  const transactionId = field(formData, "transactionId");
+  const params = {
+    transactionId,
+    splits: splitsField(formData),
+    amount: field(formData, "amount"),
+    date: field(formData, "date") || today(),
+    source: field(formData, "source") || undefined,
+    notes: field(formData, "notes") || undefined,
+  };
+
+  try {
+    await db.transaction((tx) => updateSplitExpense(tx, userId, params));
+  } catch (error) {
+    if (error instanceof AccountingError) {
+      redirect(`/transactions/${transactionId}/edit?error=${encodeURIComponent(error.message)}`);
+    }
+    throw error;
+  }
+
+  redirect(`/transactions?success=${encodeURIComponent("Split expense updated.")}`);
 }
 
 export async function recordTransferAction(formData: FormData): Promise<void> {

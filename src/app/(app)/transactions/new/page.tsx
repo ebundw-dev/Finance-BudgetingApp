@@ -6,10 +6,12 @@ import {
   recordCategoryReallocationAction,
   recordDebtPaymentAction,
   recordExpenseAction,
+  recordSplitExpenseAction,
   recordTransferAction,
 } from "@/lib/transactions/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { ExpenseForm } from "@/components/ExpenseForm";
 import { SubmitButton } from "@/components/SubmitButton";
 import { buttonPrimary, errorBanner, field, input, label as labelClass, link, select as selectClass } from "@/lib/ui";
 
@@ -60,7 +62,7 @@ export default async function NewTransactionPage({
       </div>
 
       <Card>
-        {type === "expense" && <ExpenseForm userId={userId} />}
+        {type === "expense" && <ExpenseFormSection userId={userId} />}
         {type === "transfer" && <TransferForm userId={userId} />}
         {type === "debt-payment" && <DebtPaymentForm userId={userId} />}
         {type === "reallocation" && <ReallocationForm userId={userId} />}
@@ -75,7 +77,7 @@ export default async function NewTransactionPage({
   );
 }
 
-async function ExpenseForm({ userId }: { userId: string }) {
+async function ExpenseFormSection({ userId }: { userId: string }) {
   const [accounts, categories] = await Promise.all([
     listAccounts(userId),
     listCategories(userId),
@@ -99,53 +101,13 @@ async function ExpenseForm({ userId }: { userId: string }) {
   }
 
   return (
-    <form action={recordExpenseAction}>
-      <div className={field}>
-        <label htmlFor="accountId" className={labelClass}>
-          Account
-        </label>
-        <select id="accountId" name="accountId" required className={selectClass}>
-          {spendableAccounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name} ({account.type})
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className={field}>
-        <label htmlFor="categoryId" className={labelClass}>
-          Category
-        </label>
-        <select id="categoryId" name="categoryId" required className={selectClass}>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className={field}>
-        <label htmlFor="amount" className={labelClass}>
-          Amount
-        </label>
-        <input id="amount" name="amount" type="text" inputMode="decimal" required className={input} />
-      </div>
-      <div className={field}>
-        <label htmlFor="date" className={labelClass}>
-          Date
-        </label>
-        <input id="date" name="date" type="date" defaultValue={todayStr()} className={input} />
-      </div>
-      <div className={field}>
-        <label htmlFor="source" className={labelClass}>
-          Merchant / source
-        </label>
-        <input id="source" name="source" type="text" className={input} />
-      </div>
-      <SubmitButton className={buttonPrimary} pendingLabel="Recording…">
-        Record Expense
-      </SubmitButton>
-    </form>
+    <ExpenseForm
+      accounts={spendableAccounts}
+      categories={categories}
+      defaultDate={todayStr()}
+      expenseAction={recordExpenseAction}
+      splitExpenseAction={recordSplitExpenseAction}
+    />
   );
 }
 

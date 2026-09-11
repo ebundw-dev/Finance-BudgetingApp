@@ -3,7 +3,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { listRecentTransactions } from "@/lib/transactions/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
-import { buttonPrimary, buttonSecondary, currency, successBanner, table, td, th } from "@/lib/ui";
+import { buttonPrimary, buttonSecondary, currency, link, successBanner, table, td, th } from "@/lib/ui";
 
 const TYPE_LABELS: Record<string, string> = {
   income: "Income",
@@ -71,6 +71,7 @@ export default async function TransactionsPage({
                 <th className={th}>Category</th>
                 <th className={th}>Amount</th>
                 <th className={th}>Source / Notes</th>
+                <th className={th}></th>
               </tr>
             </thead>
             <tbody>
@@ -89,11 +90,38 @@ export default async function TransactionsPage({
                     {row.relatedAccountName ? ` → ${row.relatedAccountName}` : ""}
                   </td>
                   <td className={td}>
-                    {row.categoryName ?? "—"}
-                    {row.relatedCategoryName ? ` → ${row.relatedCategoryName}` : ""}
+                    {row.splits.length > 0 ? (
+                      <details>
+                        <summary className="cursor-pointer list-none">
+                          <span className="rounded-full bg-accent/12 px-2 py-0.5 text-xs font-medium text-accent">
+                            Split ({row.splits.length})
+                          </span>
+                        </summary>
+                        <ul className="mt-2 space-y-1 text-xs text-text-secondary">
+                          {row.splits.map((s) => (
+                            <li key={s.categoryId} className="flex justify-between gap-4">
+                              <span>{s.categoryName}</span>
+                              <span className="tabular-nums">{currency(s.amount)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : (
+                      <>
+                        {row.categoryName ?? "—"}
+                        {row.relatedCategoryName ? ` → ${row.relatedCategoryName}` : ""}
+                      </>
+                    )}
                   </td>
                   <td className={`${td} tabular-nums`}>{currency(row.amount)}</td>
                   <td className={`${td} text-text-secondary`}>{row.source ?? row.notes ?? ""}</td>
+                  <td className={td}>
+                    {row.splits.length > 0 ? (
+                      <Link href={`/transactions/${row.id}/edit`} className={link}>
+                        Edit
+                      </Link>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>

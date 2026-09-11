@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { NeonDatabase } from "drizzle-orm/neon-serverless";
 import * as schema from "@/db/schema";
-import { accounts, categories, debts, transactions } from "@/db/schema";
+import { accounts, categories, debts, transactions, transactionSplits } from "@/db/schema";
 import {
   InsufficientCategoryBalanceError,
   InsufficientUnallocatedCashError,
@@ -288,6 +288,279 @@ export async function recordExpense(
     .where(eq(accounts.id, account.id));
 
   return txn;
+}
+
+export interface SplitItem {
+  categoryId: string;
+  amount: string;
+}
+
+function validateSplits(splits: SplitItem[], totalAmount: string): void {
+  if (splits.length < 2) {
+    throw new ValidationError("A split expense needs at least two categories.");
+  }
+
+  const categoryIds = splits.map((s) => s.categoryId);
+  if (new Set(categoryIds).size !== categoryIds.length) {
+    throw new ValidationError("Cannot split the same category twice in one transaction.");
+  }
+
+  for (const split of splits) {
+    assertPositiveAmount(split.amount);
+  }
+
+  const splitTotal = splits.reduce((sum, s) => sum + Number(s.amount), 0);
+  if (Math.abs(splitTotal - Number(totalAmount)) > 0.001) {
+    throw new ValidationError(
+      `Splits total ${splitTotal.toFixed(2)} but the transaction amount is ${Number(totalAmount).toFixed(2)}.`
+    );
+  }
+}
+
+// Looks up the credit-card debt reserve category for an account, the same
+// way the unsplit branch of recordExpense does -- every split of one
+// transaction shares this one account, so they all share the same reserve
+// category too.
+async function findReserveCategoryId(
+  tx: Tx,
+  userId: string,
+  account: typeof accounts.$inferSelect
+): Promise<string | undefined> {
+  if (account.type !== "credit_card") {
+    return undefined;
+  }
+  const [debt] = await tx
+    .select()
+    .from(debts)
+    .where(and(eq(debts.accountId, account.id), eq(debts.userId, userId)));
+  if (!debt) {
+    throw new NotFoundError(`Account ${account.id} is not a tracked debt; cannot charge it.`);
+  }
+  return debt.categoryId;
+}
+
+export interface RecordSplitExpenseParams {
+  accountId: string;
+  splits: SplitItem[];
+  amount: string;
+  date: string;
+  source?: string;
+  notes?: string;
+}
+
+// Same accounting as recordExpense (including the credit-card reserve-
+// category mechanic), just fanned out across categories instead of applied
+// once. The parent transactions row keeps the total amount and account, but
+// categoryId is null -- the per-category breakdown lives in
+// transaction_splits, one row per split.
+export async function recordSplitExpense(
+  tx: Tx,
+  userId: string,
+  params: RecordSplitExpenseParams
+) {
+  assertPositiveAmount(params.amount);
+  validateSplits(params.splits, params.amount);
+
+  const account = await lockAccount(tx, userId, params.accountId);
+  const isCreditCard = account.type === "credit_card";
+  if (!account.isCashAccount && !isCreditCard) {
+    throw new ValidationError(
+      "Expenses must be charged to a cash account or a credit card."
+    );
+  }
+
+  const reserveCategoryId = await findReserveCategoryId(tx, userId, account);
+
+  const idsToLock = reserveCategoryId
+    ? [...params.splits.map((s) => s.categoryId), reserveCategoryId]
+    : params.splits.map((s) => s.categoryId);
+  const lockedCategories = await lockMany(idsToLock, (id) => lockCategory(tx, userId, id));
+  const categoryById = new Map(lockedCategories.map((c) => [c.id, c]));
+
+  for (const split of params.splits) {
+    const category = categoryById.get(split.categoryId)!;
+    if (Number(category.allocatedBalance) < Number(split.amount)) {
+      throw new InsufficientCategoryBalanceError(
+        `Category "${category.name}" has ${category.allocatedBalance} available, cannot spend ${split.amount}.`
+      );
+    }
+  }
+
+  const [txn] = await tx
+    .insert(transactions)
+    .values({
+      userId,
+      type: "expense",
+      accountId: account.id,
+      categoryId: null,
+      relatedCategoryId: reserveCategoryId,
+      amount: params.amount,
+      date: params.date,
+      source: params.source,
+      notes: params.notes,
+    })
+    .returning();
+
+  for (const split of params.splits) {
+    await tx.insert(transactionSplits).values({
+      transactionId: txn.id,
+      categoryId: split.categoryId,
+      amount: split.amount,
+    });
+
+    await tx
+      .update(categories)
+      .set({
+        allocatedBalance: sql`${categories.allocatedBalance} - ${split.amount}`,
+      })
+      .where(eq(categories.id, split.categoryId));
+
+    if (reserveCategoryId) {
+      await tx
+        .update(categories)
+        .set({
+          allocatedBalance: sql`${categories.allocatedBalance} + ${split.amount}`,
+        })
+        .where(eq(categories.id, reserveCategoryId));
+    }
+  }
+
+  await tx
+    .update(accounts)
+    .set({
+      currentBalance: isCreditCard
+        ? sql`${accounts.currentBalance} + ${params.amount}`
+        : sql`${accounts.currentBalance} - ${params.amount}`,
+    })
+    .where(eq(accounts.id, account.id));
+
+  return txn;
+}
+
+export interface UpdateSplitExpenseParams {
+  transactionId: string;
+  splits: SplitItem[];
+  amount: string;
+  date: string;
+  source?: string;
+  notes?: string;
+}
+
+// Redistributes an existing split expense's categories/amounts (add,
+// remove, or resize rows) and/or its total amount, date, or notes. Account
+// and type are immutable here -- only the category breakdown and the
+// metadata a receipt correction would touch. Reverses the old splits'
+// effects and applies the new ones as one net delta per category, so no
+// intermediate write can trip the allocated_balance >= 0 check even when a
+// category is both in the old and new split sets.
+export async function updateSplitExpense(
+  tx: Tx,
+  userId: string,
+  params: UpdateSplitExpenseParams
+) {
+  assertPositiveAmount(params.amount);
+  validateSplits(params.splits, params.amount);
+
+  const [txnRow] = await tx
+    .select()
+    .from(transactions)
+    .where(and(eq(transactions.id, params.transactionId), eq(transactions.userId, userId)))
+    .for("update");
+  if (!txnRow) {
+    throw new NotFoundError(`Transaction ${params.transactionId} not found.`);
+  }
+  if (txnRow.type !== "expense" || txnRow.categoryId !== null || !txnRow.accountId) {
+    throw new ValidationError("Only a split expense can be edited this way.");
+  }
+
+  const existingSplits = await tx
+    .select()
+    .from(transactionSplits)
+    .where(eq(transactionSplits.transactionId, txnRow.id));
+
+  const account = await lockAccount(tx, userId, txnRow.accountId);
+  const isCreditCard = account.type === "credit_card";
+  const reserveCategoryId = await findReserveCategoryId(tx, userId, account);
+
+  const allCategoryIds = new Set([
+    ...existingSplits.map((s) => s.categoryId),
+    ...params.splits.map((s) => s.categoryId),
+    ...(reserveCategoryId ? [reserveCategoryId] : []),
+  ]);
+  const lockedCategories = await lockMany([...allCategoryIds], (id) => lockCategory(tx, userId, id));
+  const categoryById = new Map(lockedCategories.map((c) => [c.id, c]));
+
+  const balanceDelta = new Map<string, number>();
+  const addDelta = (id: string, delta: number) => {
+    balanceDelta.set(id, (balanceDelta.get(id) ?? 0) + delta);
+  };
+
+  for (const split of existingSplits) {
+    addDelta(split.categoryId, Number(split.amount));
+    if (reserveCategoryId) {
+      addDelta(reserveCategoryId, -Number(split.amount));
+    }
+  }
+  for (const split of params.splits) {
+    addDelta(split.categoryId, -Number(split.amount));
+    if (reserveCategoryId) {
+      addDelta(reserveCategoryId, Number(split.amount));
+    }
+  }
+
+  for (const [categoryId, delta] of balanceDelta.entries()) {
+    if (delta < 0) {
+      const category = categoryById.get(categoryId)!;
+      if (Number(category.allocatedBalance) + delta < -0.001) {
+        throw new InsufficientCategoryBalanceError(
+          `Category "${category.name}" has ${category.allocatedBalance} available, cannot apply a net change of ${delta.toFixed(2)}.`
+        );
+      }
+    }
+  }
+
+  for (const [categoryId, delta] of balanceDelta.entries()) {
+    if (delta === 0) continue;
+    await tx
+      .update(categories)
+      .set({ allocatedBalance: sql`${categories.allocatedBalance} + ${delta.toFixed(2)}` })
+      .where(eq(categories.id, categoryId));
+  }
+
+  await tx.delete(transactionSplits).where(eq(transactionSplits.transactionId, txnRow.id));
+  for (const split of params.splits) {
+    await tx.insert(transactionSplits).values({
+      transactionId: txnRow.id,
+      categoryId: split.categoryId,
+      amount: split.amount,
+    });
+  }
+
+  const amountDelta = Number(params.amount) - Number(txnRow.amount);
+  if (amountDelta !== 0) {
+    await tx
+      .update(accounts)
+      .set({
+        currentBalance: isCreditCard
+          ? sql`${accounts.currentBalance} + ${amountDelta.toFixed(2)}`
+          : sql`${accounts.currentBalance} - ${amountDelta.toFixed(2)}`,
+      })
+      .where(eq(accounts.id, account.id));
+  }
+
+  const [updated] = await tx
+    .update(transactions)
+    .set({
+      amount: params.amount,
+      relatedCategoryId: reserveCategoryId,
+      date: params.date,
+      source: params.source,
+      notes: params.notes,
+    })
+    .where(eq(transactions.id, txnRow.id))
+    .returning();
+
+  return updated;
 }
 
 export interface RecordDebtPaymentParams {
