@@ -45,6 +45,11 @@ export default async function DebtsPage() {
               const starting = Number(debt.startingBalance);
               const current = Number(debt.currentBalance);
               const eliminated = starting - current;
+              // "Eliminated" only means something for a debt that already
+              // had a balance when tracking began (e.g. a loan from before
+              // using the app). A debt that started at $0 and has since
+              // been used normally isn't being "eliminated" -- it's just
+              // being carried -- so there's nothing meaningful to show.
               const percent = starting > 0 ? Math.round((eliminated / starting) * 100) : null;
 
               return (
@@ -56,8 +61,9 @@ export default async function DebtsPage() {
                   </td>
                   <td>{formatCurrency(debt.startingBalance)}</td>
                   <td>
-                    {formatCurrency(eliminated.toFixed(2))}
-                    {percent !== null ? ` (${percent}%)` : ""}
+                    {starting > 0
+                      ? `${formatCurrency(eliminated.toFixed(2))} (${percent}%)`
+                      : "—"}
                   </td>
                   <td>{debt.minimumPayment ? formatCurrency(debt.minimumPayment) : "—"}</td>
                   <td>{debt.apr ? `${debt.apr}%` : "—"}</td>
