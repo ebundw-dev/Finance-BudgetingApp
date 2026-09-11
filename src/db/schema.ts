@@ -61,6 +61,14 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "category_reallocation",
 ]);
 
+export const scheduledCadenceEnum = pgEnum("scheduled_cadence", [
+  "weekly",
+  "biweekly",
+  "monthly",
+  "yearly",
+  "custom_days",
+]);
+
 // --- Tables ---
 
 export const users = pgTable("users", {
@@ -199,6 +207,47 @@ export const transactions = pgTable(
       .defaultNow(),
   },
   (table) => [check("amount_positive", sql`${table.amount} > 0`)]
+);
+
+// A template for a future transactions row -- "Embrace Your True
+// Expenses": bills and irregular expenses get budgeted for before they
+// hit, instead of surprising Unallocated Cash the day they're due. Column
+// usage mirrors the transactions table exactly (same type-to-column
+// mapping, see the comment above it), since confirming a due scheduled
+// transaction is just calling the same accounting engine function
+// (recordIncome, recordExpense, recordAllocation, recordDebtPayment,
+// recordTransfer, recordCategoryReallocation) with these stored values --
+// see src/lib/scheduled/actions.ts. Never posts on its own: due ones are
+// only ever surfaced for a one-tap confirm (or skip, or amount edit) on
+// the Scheduled page; nothing here writes to transactions/categories/
+// accounts directly.
+export const scheduledTransactions = pgTable(
+  "scheduled_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    type: transactionTypeEnum("type").notNull(),
+    accountId: uuid("account_id").references(() => accounts.id),
+    relatedAccountId: uuid("related_account_id").references(() => accounts.id),
+    categoryId: uuid("category_id").references(() => categories.id),
+    relatedCategoryId: uuid("related_category_id").references(() => categories.id),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    // Payee/description -- what shows in the Scheduled list, and what gets
+    // passed through as the resulting transaction's source (income/expense)
+    // or notes (everything else) when confirmed.
+    description: text("description").notNull(),
+    cadence: scheduledCadenceEnum("cadence").notNull(),
+    // Only meaningful (and required) for cadence "custom_days".
+    intervalDays: integer("interval_days"),
+    nextDueDate: date("next_due_date").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [check("scheduled_amount_positive", sql`${table.amount} > 0`)]
 );
 
 export const debts = pgTable("debts", {
