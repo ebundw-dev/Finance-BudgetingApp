@@ -12,22 +12,24 @@ export default async function DebtsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <PageHeader title="Debts" />
-        <p className="text-sm text-text-secondary">
-          Add a new debt from{" "}
-          <Link href="/accounts/new" className={link}>
-            Add Account
-          </Link>{" "}
-          (check &quot;track this as a debt&quot;).
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Make it smaller"
+        title="Debts."
+        subtitle="What remains, what you're paying, and how fast it's shrinking."
+      />
+      <p className="mb-10 text-sm text-text-secondary">
+        Add a new debt from{" "}
+        <Link href="/accounts/new" className={link}>
+          Add Account
+        </Link>{" "}
+        (check &quot;track this as a debt&quot;).
+      </p>
       {debts.length === 0 ? (
         <Card>
           <p className="text-sm text-text-muted">No debts tracked yet.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {debts.map((debt) => {
             const starting = Number(debt.startingBalance);
             const current = Number(debt.currentBalance);
