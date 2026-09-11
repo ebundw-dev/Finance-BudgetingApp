@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { phaseEnum } from "@/db/schema";
 import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { Card, StatCard } from "@/components/Card";
 import { ProgressBar } from "@/components/ProgressBar";
-import { SubmitButton } from "@/components/SubmitButton";
-import { buttonSecondary, currency, select as selectClass } from "@/lib/ui";
-import { updatePhase } from "./actions";
+import { PhaseForm } from "@/components/PhaseForm";
+import { currency } from "@/lib/ui";
 
 export default async function Home() {
   const { userId } = await verifySession();
@@ -16,21 +14,7 @@ export default async function Home() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Dashboard</h1>
-        <form action={updatePhase} className="flex items-center gap-2">
-          <label htmlFor="phase" className="text-sm text-text-secondary">
-            Phase
-          </label>
-          <select id="phase" name="phase" defaultValue={data.phase} className={`${selectClass} w-auto`}>
-            {phaseEnum.enumValues.map((phase) => (
-              <option key={phase} value={phase}>
-                {phase}
-              </option>
-            ))}
-          </select>
-          <SubmitButton className={buttonSecondary} pendingLabel="Updating…">
-            Update
-          </SubmitButton>
-        </form>
+        <PhaseForm initialPhase={data.phase} />
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
