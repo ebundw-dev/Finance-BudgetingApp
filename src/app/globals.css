@@ -20,14 +20,22 @@
   --color-warning: #fbbf24;
 }
 
-body {
-  background-color: var(--color-base);
-  color: var(--color-text);
-}
+/* Tailwind wraps its own utilities in @layer, where unlayered CSS always
+   wins over layered CSS regardless of selector specificity. Without this
+   @layer, these rules silently beat every Tailwind text-color utility
+   applied to a <a> or <body> (e.g. buttonPrimary rendered as a <Link> got
+   an invisible label: its text-on-accent utility lost to this a{color}
+   rule even though a class selector normally outranks an element one). */
+@layer base {
+  body {
+    background-color: var(--color-base);
+    color: var(--color-text);
+  }
 
-a {
-  color: var(--color-accent);
-}
-a:hover {
-  color: var(--color-accent-hover);
+  a {
+    color: var(--color-accent);
+  }
+  a:hover {
+    color: var(--color-accent-hover);
+  }
 }

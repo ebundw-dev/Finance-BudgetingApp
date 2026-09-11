@@ -3,7 +3,20 @@ import { verifySession } from "@/lib/auth/dal";
 import { listArchivedCategories, listCategoryGroupsWithCategories } from "@/lib/categories/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { ProgressBar } from "@/components/ProgressBar";
 import { buttonPrimary, currency, link, table, td, th } from "@/lib/ui";
+
+const TYPE_BADGE: Record<string, string> = {
+  spending: "bg-accent/15 text-accent",
+  goal: "bg-success/15 text-success",
+};
+
+const PRIORITY_BADGE: Record<string, string> = {
+  P1: "bg-danger/15 text-danger",
+  P2: "bg-warning/15 text-warning",
+  P3: "bg-accent/15 text-accent",
+  P4: "bg-surface-hover text-text-secondary",
+};
 
 export default async function CategoriesPage() {
   const { userId } = await verifySession();
@@ -37,29 +50,58 @@ export default async function CategoriesPage() {
                       <th className={th}>Type</th>
                       <th className={th}>Priority</th>
                       <th className={th}>Balance</th>
-                      <th className={th}>Target</th>
                       <th className={th}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {group.categories.map((category) => (
-                      <tr key={category.id}>
-                        <td className={td}>{category.name}</td>
-                        <td className={td}>{category.categoryType}</td>
-                        <td className={td}>{category.priority ?? "—"}</td>
-                        <td className={`${td} tabular-nums`}>
-                          {currency(category.allocatedBalance)}
-                        </td>
-                        <td className={`${td} tabular-nums`}>
-                          {category.targetAmount ? currency(category.targetAmount) : "—"}
-                        </td>
-                        <td className={td}>
-                          <Link href={`/categories/${category.id}/edit`} className={link}>
-                            Edit
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
+                    {group.categories.map((category) => {
+                      const percent = category.targetAmount
+                        ? Math.round(
+                            (Number(category.allocatedBalance) / Number(category.targetAmount)) * 100
+                          )
+                        : null;
+                      return (
+                        <tr key={category.id} className="hover:bg-surface-hover/60 transition-colors">
+                          <td className={td}>{category.name}</td>
+                          <td className={td}>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE[category.categoryType] ?? "bg-surface-hover text-text-secondary"}`}
+                            >
+                              {category.categoryType}
+                            </span>
+                          </td>
+                          <td className={td}>
+                            {category.priority ? (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[category.priority] ?? "bg-surface-hover text-text-secondary"}`}
+                              >
+                                {category.priority}
+                              </span>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </td>
+                          <td className={`${td} tabular-nums`}>
+                            {percent !== null ? (
+                              <div className="min-w-32">
+                                <div className="mb-1 flex justify-between text-xs text-text-secondary">
+                                  <span>{currency(category.allocatedBalance)}</span>
+                                  <span>of {currency(category.targetAmount!)}</span>
+                                </div>
+                                <ProgressBar percent={percent} />
+                              </div>
+                            ) : (
+                              currency(category.allocatedBalance)
+                            )}
+                          </td>
+                          <td className={td}>
+                            <Link href={`/categories/${category.id}/edit`} className={link}>
+                              Edit
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -82,7 +124,7 @@ export default async function CategoriesPage() {
                 </thead>
                 <tbody>
                   {archived.map((category) => (
-                    <tr key={category.id}>
+                    <tr key={category.id} className="hover:bg-surface-hover/60 transition-colors">
                       <td className={`${td} text-text-muted`}>{category.name}</td>
                       <td className={`${td} tabular-nums text-text-muted`}>
                         {currency(category.allocatedBalance)}
