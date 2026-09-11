@@ -7,15 +7,15 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { buttonPrimary, currency, link, table, td, th } from "@/lib/ui";
 
 const TYPE_BADGE: Record<string, string> = {
-  spending: "bg-accent/15 text-accent",
-  goal: "bg-success/15 text-success",
+  spending: "bg-accent/12 text-accent",
+  goal: "bg-success/12 text-success",
 };
 
 const PRIORITY_BADGE: Record<string, string> = {
-  P1: "bg-danger/15 text-danger",
-  P2: "bg-warning/15 text-warning",
-  P3: "bg-accent/15 text-accent",
-  P4: "bg-surface-hover text-text-secondary",
+  P1: "bg-danger/12 text-danger",
+  P2: "bg-warning/12 text-warning",
+  P3: "bg-accent/12 text-accent",
+  P4: "bg-text-secondary/10 text-text-secondary",
 };
 
 export default async function CategoriesPage() {
@@ -27,20 +27,24 @@ export default async function CategoriesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <PageHeader title="Categories" />
-        <Link href="/categories/new" className={buttonPrimary}>
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Name what matters"
+          title="Categories."
+          subtitle="Turn a pile of transactions into a set of choices you can feel good about."
+        />
+        <Link href="/categories/new" className={`${buttonPrimary} mt-1`}>
           Add category
         </Link>
       </div>
       <div className="space-y-6">
         {groups.map((group) => (
           <Card key={group.id} padded={false}>
-            <h2 className="border-b border-border px-5 py-3 text-sm font-medium tracking-wide text-text-secondary uppercase">
+            <h2 className="border-b border-border px-6 py-4 text-sm font-medium tracking-wide text-text-secondary uppercase">
               {group.name}
             </h2>
             {group.categories.length === 0 ? (
-              <p className="px-5 py-4 text-sm text-text-muted">No categories in this group.</p>
+              <p className="px-6 py-5 text-sm text-text-muted">No categories in this group.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className={table}>
@@ -110,7 +114,7 @@ export default async function CategoriesPage() {
         ))}
         {archived.length > 0 ? (
           <Card padded={false}>
-            <h2 className="border-b border-border px-5 py-3 text-sm font-medium tracking-wide text-text-secondary uppercase">
+            <h2 className="border-b border-border px-6 py-4 text-sm font-medium tracking-wide text-text-secondary uppercase">
               Archived
             </h2>
             <div className="overflow-x-auto">

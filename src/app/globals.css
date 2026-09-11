@@ -1,23 +1,55 @@
 @import "tailwindcss";
 
+/* Registers next/font's injected --font-display custom property (see
+   layout.tsx) as a Tailwind utility source, so `font-display` resolves it
+   at runtime rather than needing a literal value here. */
+@theme inline {
+  --font-display: var(--font-display);
+}
+
+/* Design tokens, established once here and used everywhere via Tailwind
+   utilities (bg-*, text-*, border-*) rather than hardcoded colors -- so
+   the whole app moves together if these change. Main canvas: warm off-
+   white surfaces with a teal accent. The sidebar is a separate, darker
+   scope (see .sidebar-dark below) layered on top of these same token
+   names, not a second set of classes. */
 @theme {
-  --color-base: #0b0f14;
-  --color-surface: #12171f;
-  --color-surface-hover: #1a212c;
-  --color-border: #232b38;
-  --color-text: #e5e9f0;
-  --color-text-secondary: #8891a3;
-  --color-text-muted: #5b6472;
-  --color-accent: #38bdf8;
-  --color-accent-hover: #0ea5e9;
+  --color-base: #f7f4ee;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1ece1;
+  --color-border: #e7e0d2;
+  --color-text: #1e2a28;
+  --color-text-secondary: #64716d;
+  --color-text-muted: #9aa39f;
+  --color-accent: #4fb89a;
+  --color-accent-hover: #3e9e82;
   /* Text color for content sitting on an accent-colored background (e.g.
-     buttonPrimary). Same value as --color-base, but under its own token --
+     buttonPrimary). Under its own token, not reused from --color-base --
      "text-base" collides with Tailwind's built-in font-size utility of the
      same name, so a custom text-base color utility never gets generated. */
-  --color-on-accent: #0b0f14;
-  --color-success: #34d399;
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
+  --color-on-accent: #ffffff;
+  --color-success: #2e9e6b;
+  --color-danger: #d9564f;
+  --color-warning: #d79a2c;
+  --color-info: #4c7ebf;
+}
+
+/* Sidebar scope: redefines the same token names, darker, for Nav's
+   subtree. Utilities like text-text-secondary or bg-surface-hover emit
+   `var(--color-*)`, not a baked-in value, so anything inside .sidebar-dark
+   automatically picks up these instead of the page-wide light tokens --
+   no separate "dark:" class variants needed anywhere in Nav.tsx. */
+.sidebar-dark {
+  --color-base: #0f211d;
+  --color-surface: #15302a;
+  --color-surface-hover: #1b3b33;
+  --color-border: #24443c;
+  --color-text: #f3f7f5;
+  --color-text-secondary: #9fb6af;
+  --color-text-muted: #6e877f;
+  --color-accent: #5cd6ad;
+  --color-accent-hover: #49c09a;
+  background-color: var(--color-base);
 }
 
 /* Tailwind wraps its own utilities in @layer, where unlayered CSS always

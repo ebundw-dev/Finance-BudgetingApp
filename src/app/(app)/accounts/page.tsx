@@ -1,4 +1,13 @@
 import Link from "next/link";
+import {
+  Landmark,
+  PiggyBank,
+  Banknote,
+  CreditCard,
+  TrendingUp,
+  CircleDollarSign,
+  type LucideIcon,
+} from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { listAccounts } from "@/lib/accounts/queries";
 import { PageHeader } from "@/components/PageHeader";
@@ -14,13 +23,22 @@ const TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const TYPE_ICON: Record<string, LucideIcon> = {
+  checking: Landmark,
+  savings: PiggyBank,
+  cash: Banknote,
+  credit_card: CreditCard,
+  investment: TrendingUp,
+  other: CircleDollarSign,
+};
+
 const TYPE_BADGE: Record<string, string> = {
-  checking: "bg-accent/15 text-accent",
-  savings: "bg-success/15 text-success",
-  cash: "bg-success/15 text-success",
-  credit_card: "bg-danger/15 text-danger",
-  investment: "bg-warning/15 text-warning",
-  other: "bg-surface-hover text-text-secondary",
+  checking: "bg-accent/12 text-accent",
+  savings: "bg-success/12 text-success",
+  cash: "bg-success/12 text-success",
+  credit_card: "bg-danger/12 text-danger",
+  investment: "bg-info/12 text-info",
+  other: "bg-text-secondary/10 text-text-secondary",
 };
 
 export default async function AccountsPage() {
@@ -29,9 +47,13 @@ export default async function AccountsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <PageHeader title="Accounts" />
-        <Link href="/accounts/new" className={buttonPrimary}>
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Where it lives"
+          title="Your accounts."
+          subtitle="Every place your money actually sits — cash and debt alike."
+        />
+        <Link href="/accounts/new" className={`${buttonPrimary} mt-1`}>
           Add account
         </Link>
       </div>
@@ -40,31 +62,38 @@ export default async function AccountsPage() {
           <p className="text-sm text-text-muted">No accounts yet.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((account) => (
-            <Card key={account.id}>
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <h2 className="font-medium text-text">{account.name}</h2>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${TYPE_BADGE[account.type] ?? "bg-surface-hover text-text-secondary"}`}
-                >
-                  {TYPE_LABELS[account.type] ?? account.type}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-text-secondary">
-                  {account.isCashAccount ? "Balance" : "Owed"}
-                </span>
-                <span
-                  className={`text-lg font-semibold tabular-nums ${
-                    account.isCashAccount ? "text-text" : "text-danger"
-                  }`}
-                >
-                  {currency(account.currentBalance)}
-                </span>
-              </div>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {accounts.map((account) => {
+            const Icon = TYPE_ICON[account.type] ?? CircleDollarSign;
+            const badge = TYPE_BADGE[account.type] ?? "bg-text-secondary/10 text-text-secondary";
+            return (
+              <Card key={account.id}>
+                <div className="mb-5 flex items-start justify-between gap-2">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${badge}`}>
+                    <Icon size={18} strokeWidth={2} />
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badge}`}
+                  >
+                    {TYPE_LABELS[account.type] ?? account.type}
+                  </span>
+                </div>
+                <h2 className="mb-3 font-medium text-text">{account.name}</h2>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-text-secondary">
+                    {account.isCashAccount ? "Balance" : "Owed"}
+                  </span>
+                  <span
+                    className={`text-xl font-semibold tabular-nums ${
+                      account.isCashAccount ? "text-text" : "text-danger"
+                    }`}
+                  >
+                    {currency(account.currentBalance)}
+                  </span>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
