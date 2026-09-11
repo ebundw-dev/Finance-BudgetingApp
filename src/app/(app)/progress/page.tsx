@@ -3,6 +3,7 @@ import { verifySession } from "@/lib/auth/dal";
 import { getProgressData } from "@/lib/months/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
+import { ProgressCharts } from "@/components/ProgressCharts";
 import { currency, link, table, td, th } from "@/lib/ui";
 
 const MONTH_NAMES = [
@@ -27,8 +28,7 @@ export default async function ProgressPage() {
       />
       <p className="mb-10 text-sm text-text-secondary">
         Built from snapshots taken via the monthly view&apos;s &quot;Take snapshot&quot; button --
-        no data appears here until at least one month has been snapshotted. Shown as a table for
-        now; visual charts are a later polish pass.
+        no data appears here until at least one month has been snapshotted.
       </p>
       {rows.length === 0 ? (
         <Card>
@@ -40,8 +40,18 @@ export default async function ProgressPage() {
             and take one for the current month.
           </p>
         </Card>
+      ) : rows.length === 1 ? (
+        <Card>
+          <p className="text-sm text-text-muted">
+            One month snapshotted so far -- charts need at least two points to plot a trend. The
+            table below already has it.
+          </p>
+        </Card>
       ) : (
-        <Card padded={false} className="overflow-x-auto">
+        <ProgressCharts rows={rows} goalCategoryNames={categoryNames} />
+      )}
+      {rows.length > 0 ? (
+        <Card padded={false} className="mt-2 overflow-x-auto">
           <table className={table}>
             <thead>
               <tr>
@@ -89,7 +99,7 @@ export default async function ProgressPage() {
             </tbody>
           </table>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 }
