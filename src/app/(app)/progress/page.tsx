@@ -20,8 +20,12 @@ export default async function ProgressPage() {
 
   return (
     <div>
-      <PageHeader title="Progress" />
-      <p className="mb-6 text-sm text-text-secondary">
+      <PageHeader
+        eyebrow="Historical progress"
+        title="The record speaks for itself."
+        subtitle="Not a scoreboard — just the choices that have been adding up."
+      />
+      <p className="mb-10 text-sm text-text-secondary">
         Built from snapshots taken via the monthly view&apos;s &quot;Take snapshot&quot; button --
         no data appears here until at least one month has been snapshotted. Shown as a table for
         now; visual charts are a later polish pass.
