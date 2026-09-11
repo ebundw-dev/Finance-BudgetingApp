@@ -1,3 +1,4 @@
+import { buttonPrimary, errorBanner, field, input, label as labelClass } from "@/lib/ui";
 import { login } from "./actions";
 
 export default async function LoginPage({
@@ -8,26 +9,47 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <main>
-      <h1>Ledger</h1>
-      <form action={login}>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" autoComplete="username" required autoFocus />
-        </div>
-        <div>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-        </div>
-        <button type="submit">Sign in</button>
-      </form>
-      {error ? <p role="alert">Invalid email or password.</p> : null}
+    <main className="flex min-h-screen items-center justify-center px-4">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8">
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight text-text">Ledger</h1>
+        <form action={login}>
+          <div className={field}>
+            <label htmlFor="email" className={labelClass}>
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              required
+              autoFocus
+              className={input}
+            />
+          </div>
+          <div className={field}>
+            <label htmlFor="password" className={labelClass}>
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              className={input}
+            />
+          </div>
+          {error ? (
+            <p role="alert" className={errorBanner}>
+              Invalid email or password.
+            </p>
+          ) : null}
+          <button type="submit" className={`${buttonPrimary} w-full`}>
+            Sign in
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
