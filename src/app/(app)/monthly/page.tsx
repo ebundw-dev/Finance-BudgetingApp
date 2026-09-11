@@ -42,9 +42,13 @@ export default async function MonthlyPage({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <PageHeader title={`${MONTH_NAMES[month - 1]} ${year}`} />
-        <div className="flex gap-2">
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="A month at a time"
+          title={`${MONTH_NAMES[month - 1]} ${year}.`}
+          subtitle="Look back before you look forward."
+        />
+        <div className="mt-1 flex gap-2">
           <Link href={`/monthly?year=${prev.year}&month=${prev.month}`} className={buttonSecondary}>
             &larr; Previous
           </Link>
@@ -54,23 +58,23 @@ export default async function MonthlyPage({
         </div>
       </div>
 
-      <h2 className="mb-3 text-sm font-medium tracking-wide text-text-secondary uppercase">
+      <h2 className="mb-4 text-sm font-medium tracking-wide text-text-secondary uppercase">
         Activity
       </h2>
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Income" value={currency(totals.income)} tone="success" />
-        <StatCard label="Spending" value={currency(totals.spending)} />
-        <StatCard label="Debt Paid" value={currency(totals.debtPaid)} tone="success" />
-        <StatCard label="Savings" value={currency(totals.savings)} />
+        <StatCard label="Spending" value={currency(totals.spending)} tone="warning" />
+        <StatCard label="Debt Paid" value={currency(totals.debtPaid)} tone="accent" />
+        <StatCard label="Savings" value={currency(totals.savings)} tone="info" />
       </div>
 
-      <h2 className="mb-3 text-sm font-medium tracking-wide text-text-secondary uppercase">
+      <h2 className="mb-4 text-sm font-medium tracking-wide text-text-secondary uppercase">
         Snapshot
       </h2>
       <Card>
         {snapshot ? (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
               <div>
                 <div className="text-xs text-text-secondary">Total Cash</div>
                 <div className="tabular-nums text-lg font-semibold text-text">
