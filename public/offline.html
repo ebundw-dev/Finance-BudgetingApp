@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ledger — Offline</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        background: #0f211d;
+        color: #f3f7f5;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .wrap {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+      .mark {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      p {
+        font-size: 0.9rem;
+        color: #9fb6af;
+        max-width: 320px;
+        line-height: 1.5;
+        margin: 0;
+      }
+      button {
+        margin-top: 24px;
+        background: #5cd6ad;
+        color: #0f211d;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <svg class="mark" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+        <rect width="512" height="512" rx="96" fill="#15302a" />
+        <rect x="116" y="170" width="280" height="44" rx="22" fill="#5cd6ad" />
+        <rect x="116" y="234" width="220" height="44" rx="22" fill="#5cd6ad" />
+        <rect x="116" y="298" width="160" height="44" rx="22" fill="#5cd6ad" />
+      </svg>
+      <h1>You're offline</h1>
+      <p>Ledger needs a connection to show your real balances and post transactions. Reconnect and try again.</p>
+      <button onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>
