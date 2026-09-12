@@ -1,30 +1,20 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { verifyPassword, hashPassword } from "@/lib/auth/password";
+import { verifyCredentials } from "@/lib/auth/credentials";
 import {
   SESSION_COOKIE_NAME,
   SESSION_DURATION_MS,
   createSessionToken,
 } from "@/lib/auth/session";
 
-// A fixed dummy hash to run verifyPassword against when no user matches the
-// submitted email, so a login attempt takes roughly the same time whether
-// or not the email exists -- avoids leaking account existence via timing.
-const DUMMY_HASH = hashPassword("not-a-real-password");
-
 export async function login(formData: FormData): Promise<void> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
 
-  const [user] = await db.select().from(users).where(eq(users.email, email));
-  const valid = verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
-
-  if (!user || !valid) {
+  const user = await verifyCredentials(email, password);
+  if (!user) {
     redirect("/login?error=1");
   }
 

@@ -18,6 +18,7 @@ import {
   Users,
   BarChart3,
   Upload,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/monthly", label: "Monthly", icon: Calendar },
   { href: "/progress", label: "Progress", icon: TrendingUp },
   { href: "/reports/spending", label: "Spending Report", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function isActive(pathname: string, href: string): boolean {

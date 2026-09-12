@@ -25,7 +25,12 @@ export const config = {
   // sends auth the way a page navigation would, so gating these behind
   // login wouldn't just be redundant, it would silently break "Add to
   // Home Screen" and offline fallback entirely.
+  //
+  // /api routes are excluded too: they're Bearer-token authed (see
+  // src/lib/auth/apiTokens.ts and src/lib/api/auth.ts), never carry the
+  // session cookie, and a JSON client should get a 401 JSON body from the
+  // route itself, not a 307 redirect to an HTML login page.
   matcher: [
-    "/((?!login|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|apple-touch-icon.png|icons/).*)",
+    "/((?!login|api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|apple-touch-icon.png|icons/).*)",
   ],
 };

@@ -81,6 +81,29 @@ export const users = pgTable("users", {
     .defaultNow(),
 });
 
+// A long random string issued to a client (e.g. a mobile app) in place of
+// the session cookie -- see src/lib/auth/apiTokens.ts. tokenHash is a
+// plain SHA-256 digest of the raw token, not scrypt/hashPassword's salted
+// scheme: the raw token is already 256 bits of random entropy (no
+// dictionary/rainbow-table risk the way a human password has), and a
+// salted hash can't be looked up by value in the first place -- only
+// reproduced given the same salt, which defeats an indexed lookup. The
+// raw token itself is shown to the caller exactly once, at issue time,
+// and never stored.
+export const apiTokens = pgTable("api_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+
 export const accounts = pgTable("accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
