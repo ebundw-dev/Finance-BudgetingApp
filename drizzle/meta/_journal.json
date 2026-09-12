@@ -57,6 +57,13 @@
       "when": 1789244124863,
       "tag": "0007_kind_preak",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789245045720,
+      "tag": "0008_square_silver_sable",
+      "breakpoints": true
     }
   ]
 }

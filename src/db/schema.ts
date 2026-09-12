@@ -170,6 +170,31 @@ export const categories = pgTable(
   ]
 );
 
+// Remembers which category a payee was last charged against, so expense
+// entry can suggest it instead of the user re-picking the same category
+// every time. name is stored already normalized (trim + lowercase +
+// collapsed whitespace, via normalizePayee in subscriptions/detect.ts) so
+// "Netflix" and "  NETFLIX  " dedupe to one row instead of two -- unique
+// per user. Purely a data-entry convenience: never read by the accounting
+// engine, and deleting/renaming a payee has no effect on past transactions
+// beyond the now-dangling (nullable) transactions.payee_id FK.
+export const payees = pgTable(
+  "payees",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    name: text("name").notNull(),
+    lastCategoryId: uuid("last_category_id").references(() => categories.id),
+    useCount: integer("use_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique("payees_user_name_unique").on(table.userId, table.name)]
+);
+
 // Unified ledger feed. Column usage per type (see CLAUDE.md's rules table):
 //   income                 -> accountId = destination cash account
 //   allocation              -> categoryId = destination category (source is Unallocated Cash, not a row)
@@ -211,6 +236,9 @@ export const transactions = pgTable(
     date: date("date").notNull(),
     source: text("source"),
     notes: text("notes"),
+    // Set only on expense entries made through the payee combobox (see
+    // src/lib/payees) -- additive to source, not a replacement for it.
+    payeeId: uuid("payee_id").references(() => payees.id),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
