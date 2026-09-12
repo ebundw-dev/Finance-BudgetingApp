@@ -17,6 +17,7 @@ import {
   Radar,
   Users,
   BarChart3,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/accounts", label: "Accounts", icon: Wallet },
   { href: "/categories", label: "Categories", icon: LayoutGrid },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/import", label: "Import", icon: Upload },
   { href: "/payees", label: "Payees", icon: Users },
   { href: "/scheduled", label: "Scheduled", icon: Repeat },
   { href: "/subscriptions", label: "Subscriptions", icon: Radar },
