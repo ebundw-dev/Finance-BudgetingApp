@@ -42,6 +42,7 @@ if (existing) {
   await resetClient`delete from scheduled_transactions where user_id = ${uid}`;
   await resetClient`delete from transactions where user_id = ${uid}`;
   await resetClient`delete from payees where user_id = ${uid}`;
+  await resetClient`delete from api_tokens where user_id = ${uid}`;
   await resetClient`delete from goals where user_id = ${uid}`;
   await resetClient`delete from allocation_rules where user_id = ${uid}`;
   await resetClient`delete from debts where user_id = ${uid}`;

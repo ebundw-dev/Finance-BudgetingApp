@@ -42,6 +42,14 @@ export async function listDebtAccounts(userId: string) {
     .orderBy(accounts.name);
 }
 
+export async function getAccount(userId: string, accountId: string) {
+  const [account] = await db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+  return account;
+}
+
 export async function listCreditCardAccounts(userId: string) {
   return db
     .select()

@@ -9,88 +9,13 @@ import {
   transactionTypeEnum,
 } from "@/db/schema";
 import { AccountingError } from "@/lib/accounting/errors";
-import {
-  recordAllocation,
-  recordCategoryReallocation,
-  recordDebtPayment,
-  recordExpense,
-  recordIncome,
-  recordTransfer,
-  type Tx,
-} from "@/lib/accounting/engine";
 import { verifySession } from "@/lib/auth/dal";
 import { computeNextDueDate } from "./cadence";
+import { postScheduled } from "./post";
 import { getScheduledTransaction } from "./queries";
 
 const TYPES = new Set(transactionTypeEnum.enumValues);
 const CADENCES = new Set(scheduledCadenceEnum.enumValues);
-
-type ScheduledRow = typeof scheduledTransactions.$inferSelect;
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-// Dispatches to the same accounting engine function a manual entry of this
-// type would use, with the scheduled transaction's stored account/
-// category ids -- the mapping mirrors the transactions table's own
-// column-usage comment in schema.ts exactly. Posts as of today (not the
-// possibly-overdue nextDueDate), same as confirming any other pending
-// action. Never touches transactions/categories/accounts outside of these
-// existing engine functions.
-async function postScheduled(tx: Tx, userId: string, scheduled: ScheduledRow, amount: string) {
-  const date = today();
-  const notes = scheduled.description;
-
-  switch (scheduled.type) {
-    case "income":
-      return recordIncome(tx, userId, {
-        accountId: scheduled.accountId!,
-        amount,
-        date,
-        source: scheduled.description,
-      });
-    case "expense":
-      return recordExpense(tx, userId, {
-        accountId: scheduled.accountId!,
-        categoryId: scheduled.categoryId!,
-        amount,
-        date,
-        source: scheduled.description,
-      });
-    case "allocation":
-      return recordAllocation(tx, userId, {
-        categoryId: scheduled.categoryId!,
-        amount,
-        date,
-        notes,
-      });
-    case "debt_payment":
-      return recordDebtPayment(tx, userId, {
-        fromAccountId: scheduled.accountId!,
-        debtAccountId: scheduled.relatedAccountId!,
-        amount,
-        date,
-        notes,
-      });
-    case "transfer":
-      return recordTransfer(tx, userId, {
-        fromAccountId: scheduled.accountId!,
-        toAccountId: scheduled.relatedAccountId!,
-        amount,
-        date,
-        notes,
-      });
-    case "category_reallocation":
-      return recordCategoryReallocation(tx, userId, {
-        fromCategoryId: scheduled.categoryId!,
-        toCategoryId: scheduled.relatedCategoryId!,
-        amount,
-        date,
-        notes,
-      });
-  }
-}
 
 interface ParsedScheduledValues {
   type: (typeof transactionTypeEnum.enumValues)[number];
