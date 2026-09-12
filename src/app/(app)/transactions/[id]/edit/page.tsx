@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/auth/dal";
 import { getSplitTransaction } from "@/lib/transactions/queries";
 import { listCategories } from "@/lib/categories/queries";
+import { listPayees } from "@/lib/payees/queries";
 import { updateSplitExpenseAction } from "@/lib/transactions/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
@@ -19,7 +20,11 @@ export default async function EditSplitExpensePage({
   const { error } = await searchParams;
   const { userId } = await verifySession();
 
-  const [txn, categories] = await Promise.all([getSplitTransaction(userId, id), listCategories(userId)]);
+  const [txn, categories, payees] = await Promise.all([
+    getSplitTransaction(userId, id),
+    listCategories(userId),
+    listPayees(userId),
+  ]);
 
   if (!txn) {
     notFound();
@@ -40,6 +45,7 @@ export default async function EditSplitExpensePage({
         <EditSplitExpenseForm
           transactionId={txn.id}
           categories={categories}
+          payees={payees}
           initialAmount={txn.amount}
           initialDate={txn.date}
           initialSource={txn.source ?? ""}

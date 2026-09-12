@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { PayeeCombobox } from "@/components/PayeeCombobox";
 import { SplitRows, type SplitRowValue, type SplitRowsCategory } from "@/components/SplitRows";
 import { SubmitButton } from "@/components/SubmitButton";
+import type { PayeeOption } from "@/lib/payees/queries";
 import {
   buttonPrimary,
   checkbox,
@@ -22,18 +24,21 @@ export interface ExpenseFormAccount {
 export function ExpenseForm({
   accounts,
   categories,
+  payees,
   defaultDate,
   expenseAction,
   splitExpenseAction,
 }: {
   accounts: ExpenseFormAccount[];
   categories: SplitRowsCategory[];
+  payees: PayeeOption[];
   defaultDate: string;
   expenseAction: (formData: FormData) => void | Promise<void>;
   splitExpenseAction: (formData: FormData) => void | Promise<void>;
 }) {
   const [isSplit, setIsSplit] = useState(false);
   const [amount, setAmount] = useState("");
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [splits, setSplits] = useState<SplitRowValue[]>([
     { categoryId: categories[0]?.id ?? "", amount: "" },
     { categoryId: categories[1]?.id ?? categories[0]?.id ?? "", amount: "" },
@@ -89,7 +94,14 @@ export function ExpenseForm({
           <label htmlFor="categoryId" className={labelClass}>
             Category
           </label>
-          <select id="categoryId" name="categoryId" required className={selectClass}>
+          <select
+            id="categoryId"
+            name="categoryId"
+            required
+            className={selectClass}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+          >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -132,12 +144,14 @@ export function ExpenseForm({
         </label>
         <input id="date" name="date" type="date" defaultValue={defaultDate} className={inputClass} />
       </div>
-      <div className={field}>
-        <label htmlFor="source" className={labelClass}>
-          Merchant / source
-        </label>
-        <input id="source" name="source" type="text" className={inputClass} />
-      </div>
+      <PayeeCombobox
+        payees={payees}
+        onSelectPayee={(payee) => {
+          if (payee.lastCategoryId && categories.some((c) => c.id === payee.lastCategoryId)) {
+            setCategoryId(payee.lastCategoryId);
+          }
+        }}
+      />
 
       <SubmitButton
         className={buttonPrimary}

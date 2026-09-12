@@ -1,7 +1,9 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
+import { transactions } from "@/db/schema";
 import { AccountingError } from "@/lib/accounting/errors";
 import {
   recordCategoryReallocation,
@@ -14,6 +16,7 @@ import {
   type SplitItem,
 } from "@/lib/accounting/engine";
 import { verifySession } from "@/lib/auth/dal";
+import { recordPayeeUsage } from "@/lib/payees/service";
 
 function field(formData: FormData, name: string): string {
   return String(formData.get(name) ?? "").trim();
@@ -66,7 +69,16 @@ export async function recordExpenseAction(formData: FormData): Promise<void> {
   };
 
   try {
-    await db.transaction((tx) => recordExpense(tx, userId, params));
+    await db.transaction(async (tx) => {
+      const txn = await recordExpense(tx, userId, params);
+      // Payee tracking is purely a data-entry convenience layered on top of
+      // the accounting engine call above, not part of it -- see
+      // src/lib/payees/service.ts.
+      if (params.source) {
+        const payeeId = await recordPayeeUsage(tx, userId, params.source, params.categoryId);
+        await tx.update(transactions).set({ payeeId }).where(eq(transactions.id, txn.id));
+      }
+    });
   } catch (error) {
     if (error instanceof AccountingError) {
       redirect(`/transactions/new?type=expense&error=${encodeURIComponent(error.message)}`);
@@ -89,7 +101,15 @@ export async function recordSplitExpenseAction(formData: FormData): Promise<void
   };
 
   try {
-    await db.transaction((tx) => recordSplitExpense(tx, userId, params));
+    await db.transaction(async (tx) => {
+      const txn = await recordSplitExpense(tx, userId, params);
+      // A split spans multiple categories, so there's no single "category
+      // used" to remember against the payee -- pass null rather than guess.
+      if (params.source) {
+        const payeeId = await recordPayeeUsage(tx, userId, params.source, null);
+        await tx.update(transactions).set({ payeeId }).where(eq(transactions.id, txn.id));
+      }
+    });
   } catch (error) {
     if (error instanceof AccountingError) {
       redirect(`/transactions/new?type=expense&error=${encodeURIComponent(error.message)}`);
@@ -113,7 +133,14 @@ export async function updateSplitExpenseAction(formData: FormData): Promise<void
   };
 
   try {
-    await db.transaction((tx) => updateSplitExpense(tx, userId, params));
+    await db.transaction(async (tx) => {
+      const txn = await updateSplitExpense(tx, userId, params);
+      // Always resync payeeId (to a resolved payee, or back to null if the
+      // payee field was cleared) rather than only updating when present --
+      // this is an edit, so a previously-attached payee can be removed.
+      const payeeId = params.source ? await recordPayeeUsage(tx, userId, params.source, null) : null;
+      await tx.update(transactions).set({ payeeId }).where(eq(transactions.id, txn.id));
+    });
   } catch (error) {
     if (error instanceof AccountingError) {
       redirect(`/transactions/${transactionId}/edit?error=${encodeURIComponent(error.message)}`);

@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { PayeeCombobox } from "@/components/PayeeCombobox";
 import { SplitRows, type SplitRowValue, type SplitRowsCategory } from "@/components/SplitRows";
 import { SubmitButton } from "@/components/SubmitButton";
+import type { PayeeOption } from "@/lib/payees/queries";
 import { buttonPrimary, field, input as inputClass, label as labelClass } from "@/lib/ui";
 
 export function EditSplitExpenseForm({
   transactionId,
   categories,
+  payees,
   initialAmount,
   initialDate,
   initialSource,
@@ -16,6 +19,7 @@ export function EditSplitExpenseForm({
 }: {
   transactionId: string;
   categories: SplitRowsCategory[];
+  payees: PayeeOption[];
   initialAmount: string;
   initialDate: string;
   initialSource: string;
@@ -78,18 +82,7 @@ export function EditSplitExpenseForm({
         </label>
         <input id="date" name="date" type="date" defaultValue={initialDate} className={inputClass} />
       </div>
-      <div className={field}>
-        <label htmlFor="source" className={labelClass}>
-          Merchant / source
-        </label>
-        <input
-          id="source"
-          name="source"
-          type="text"
-          defaultValue={initialSource}
-          className={inputClass}
-        />
-      </div>
+      <PayeeCombobox payees={payees} initialValue={initialSource} />
 
       <SubmitButton className={buttonPrimary} disabled={!isBalanced} pendingLabel="Saving…">
         Save Changes

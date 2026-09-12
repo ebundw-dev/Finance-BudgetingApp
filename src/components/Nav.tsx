@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Repeat,
   Radar,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/accounts", label: "Accounts", icon: Wallet },
   { href: "/categories", label: "Categories", icon: LayoutGrid },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/payees", label: "Payees", icon: Users },
   { href: "/scheduled", label: "Scheduled", icon: Repeat },
   { href: "/subscriptions", label: "Subscriptions", icon: Radar },
   { href: "/allocate", label: "Allocate", icon: SlidersHorizontal },

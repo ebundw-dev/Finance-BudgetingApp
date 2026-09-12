@@ -2,6 +2,7 @@ import Link from "next/link";
 import { verifySession } from "@/lib/auth/dal";
 import { listAccounts, listCashAccounts, listDebtAccounts } from "@/lib/accounts/queries";
 import { listCategories } from "@/lib/categories/queries";
+import { listPayees } from "@/lib/payees/queries";
 import {
   recordCategoryReallocationAction,
   recordDebtPaymentAction,
@@ -78,9 +79,10 @@ export default async function NewTransactionPage({
 }
 
 async function ExpenseFormSection({ userId }: { userId: string }) {
-  const [accounts, categories] = await Promise.all([
+  const [accounts, categories, payees] = await Promise.all([
     listAccounts(userId),
     listCategories(userId),
+    listPayees(userId),
   ]);
   const spendableAccounts = accounts.filter((a) => a.isCashAccount || a.type === "credit_card");
 
@@ -104,6 +106,7 @@ async function ExpenseFormSection({ userId }: { userId: string }) {
     <ExpenseForm
       accounts={spendableAccounts}
       categories={categories}
+      payees={payees}
       defaultDate={todayStr()}
       expenseAction={recordExpenseAction}
       splitExpenseAction={recordSplitExpenseAction}
