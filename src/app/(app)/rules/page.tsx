@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SplitSquareHorizontal } from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { getRuleSet, listRuleSetNames } from "@/lib/rules/queries";
 import { deleteRuleSet } from "@/lib/rules/actions";
@@ -41,7 +42,12 @@ export default async function RulesPage() {
           {ruleSets.map((ruleSet) => (
             <Card key={ruleSet.name}>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-medium text-text">{ruleSet.name}</h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent">
+                    <SplitSquareHorizontal size={18} strokeWidth={2} />
+                  </div>
+                  <h2 className="font-medium text-text">{ruleSet.name}</h2>
+                </div>
                 <form action={deleteRuleSet}>
                   <input type="hidden" name="ruleName" value={ruleSet.name} />
                   <SubmitButton className={`${buttonDanger} px-2 py-1 text-xs`} pendingLabel="Deleting…">

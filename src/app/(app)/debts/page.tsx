@@ -1,10 +1,40 @@
 import Link from "next/link";
+import {
+  Landmark,
+  PiggyBank,
+  Banknote,
+  CreditCard,
+  TrendingUp,
+  CircleDollarSign,
+  type LucideIcon,
+} from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { listDebts } from "@/lib/debts/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { ProgressBar } from "@/components/ProgressBar";
 import { currency, link } from "@/lib/ui";
+
+// Same account-type -> icon/badge mapping as src/app/(app)/accounts/page.tsx
+// -- a debt's card shows the same icon its underlying account does there,
+// since every debt is exactly one account.
+const TYPE_ICON: Record<string, LucideIcon> = {
+  checking: Landmark,
+  savings: PiggyBank,
+  cash: Banknote,
+  credit_card: CreditCard,
+  investment: TrendingUp,
+  other: CircleDollarSign,
+};
+
+const TYPE_BADGE: Record<string, string> = {
+  checking: "bg-accent/12 text-accent",
+  savings: "bg-success/12 text-success",
+  cash: "bg-success/12 text-success",
+  credit_card: "bg-danger/12 text-danger",
+  investment: "bg-info/12 text-info",
+  other: "bg-text-secondary/10 text-text-secondary",
+};
 
 export default async function DebtsPage() {
   const { userId } = await verifySession();
@@ -40,15 +70,24 @@ export default async function DebtsPage() {
             // been used normally isn't being "eliminated" -- it's just
             // being carried -- so there's nothing meaningful to show.
             const percent = starting > 0 ? Math.round((eliminated / starting) * 100) : null;
+            const Icon = TYPE_ICON[debt.accountType] ?? CircleDollarSign;
+            const badge = TYPE_BADGE[debt.accountType] ?? "bg-text-secondary/10 text-text-secondary";
 
             return (
               <Card key={debt.id}>
                 <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <h2 className="font-medium text-text">{debt.accountName}</h2>
-                    <p className="text-xs text-text-muted">
-                      Reserved: {currency(debt.reservedBalance)} ({debt.categoryName})
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${badge}`}
+                    >
+                      <Icon size={18} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <h2 className="font-medium text-text">{debt.accountName}</h2>
+                      <p className="text-xs text-text-muted">
+                        Reserved: {currency(debt.reservedBalance)} ({debt.categoryName})
+                      </p>
+                    </div>
                   </div>
                   <Link href={`/debts/${debt.id}/edit`} className={`${link} text-xs`}>
                     Edit

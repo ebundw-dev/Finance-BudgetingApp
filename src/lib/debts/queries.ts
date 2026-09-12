@@ -7,6 +7,7 @@ export interface DebtRow {
   id: string;
   accountId: string;
   accountName: string;
+  accountType: string;
   currentBalance: string;
   startingBalance: string;
   minimumPayment: string | null;
@@ -28,6 +29,7 @@ export async function listDebts(userId: string): Promise<DebtRow[]> {
       id: debts.id,
       accountId: debts.accountId,
       accountName: accounts.name,
+      accountType: accounts.type,
       currentBalance: accounts.currentBalance,
       startingBalance: debts.startingBalance,
       minimumPayment: debts.minimumPayment,
@@ -50,6 +52,7 @@ export async function getDebt(userId: string, debtId: string): Promise<DebtRow |
       id: debts.id,
       accountId: debts.accountId,
       accountName: accounts.name,
+      accountType: accounts.type,
       currentBalance: accounts.currentBalance,
       startingBalance: debts.startingBalance,
       minimumPayment: debts.minimumPayment,
