@@ -16,6 +16,7 @@ import {
   Repeat,
   Radar,
   Users,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/debts", label: "Debts", icon: CreditCard },
   { href: "/monthly", label: "Monthly", icon: Calendar },
   { href: "/progress", label: "Progress", icon: TrendingUp },
+  { href: "/reports/spending", label: "Spending Report", icon: BarChart3 },
 ];
 
 function isActive(pathname: string, href: string): boolean {
