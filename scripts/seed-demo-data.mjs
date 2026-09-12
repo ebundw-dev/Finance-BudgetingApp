@@ -37,6 +37,9 @@ if (existing) {
     await resetClient`delete from month_category_snapshots where month_id = ${m.id}`;
   }
   await resetClient`delete from months where user_id = ${uid}`;
+  await resetClient`delete from transaction_splits where transaction_id in (select id from transactions where user_id = ${uid})`;
+  await resetClient`delete from dismissed_subscription_candidates where user_id = ${uid}`;
+  await resetClient`delete from scheduled_transactions where user_id = ${uid}`;
   await resetClient`delete from transactions where user_id = ${uid}`;
   await resetClient`delete from goals where user_id = ${uid}`;
   await resetClient`delete from allocation_rules where user_id = ${uid}`;
@@ -277,18 +280,29 @@ const summary = await db.transaction(async (tx) => {
   await allocate("rent", 900, "2026-07-01");
   await allocate("food", 400, "2026-07-01");
   await allocate("gas", 150, "2026-07-01");
+  await allocate("subscriptions", 30, "2026-07-01");
   await allocate("emergencyFund", 500, "2026-07-01");
   await allocate("carFund", 300, "2026-07-01");
   await allocate("studentLoanReserve", 200, "2026-07-01");
   await allocate("travel", 150, "2026-07-01");
   await allocate("entertainment", 200, "2026-07-01");
+  // A weekly recurring charge, allocated for separately from the monthly
+  // subscriptions below -- see Phase 9's subscription detector, which should
+  // pick this up as a "weekly" cadence candidate.
+  await allocate("miscellaneous", 200, "2026-07-01");
 
+  await cashExpense("checking", "miscellaneous", 45, "2026-07-03", "Meal Kit Box");
   await cashExpense("checking", "food", 250, "2026-07-05", "Grocery Store");
   await cashExpense("checking", "gas", 120, "2026-07-06", "Gas Station");
+  await ccExpense("visa", "subscriptions", 15.99, "2026-07-08", "Netflix");
   await ccExpense("visa", "entertainment", 180, "2026-07-10", "Concert Tickets");
+  await cashExpense("checking", "miscellaneous", 45, "2026-07-10", "Meal Kit Box");
   await ccExpense("storeCard", "travel", 90, "2026-07-14", "Travel Gear");
+  await cashExpense("checking", "subscriptions", 9.99, "2026-07-15", "Spotify");
+  await cashExpense("checking", "miscellaneous", 45, "2026-07-17", "Meal Kit Box");
   await debtPayment("checking", "studentLoan", 200, "2026-07-20");
   await transfer("checking", "savings", 500, "2026-07-21");
+  await cashExpense("checking", "miscellaneous", 45, "2026-07-24", "Meal Kit Box");
   await reallocate("rent", "emergencyFund", 100, "2026-07-25");
 
   await snapshotMonth(2026, 7);
@@ -300,6 +314,7 @@ const summary = await db.transaction(async (tx) => {
   await allocate("rent", 900, "2026-08-01");
   await allocate("food", 400, "2026-08-01");
   await allocate("gas", 150, "2026-08-01");
+  await allocate("subscriptions", 30, "2026-08-01");
   await allocate("emergencyFund", 400, "2026-08-01");
   await allocate("carFund", 400, "2026-08-01");
   await allocate("moveOutFund", 200, "2026-08-01");
@@ -312,8 +327,10 @@ const summary = await db.transaction(async (tx) => {
 
   await cashExpense("checking", "food", 300, "2026-08-06", "Grocery Store");
   await cashExpense("checking", "rent", 900, "2026-08-07", "Landlord");
+  await ccExpense("visa", "subscriptions", 15.99, "2026-08-08", "Netflix");
   await ccExpense("visa", "shopping", 220, "2026-08-12", "New Clothes");
   await ccExpense("storeCard", "entertainment", 80, "2026-08-15", "Movie Night");
+  await cashExpense("checking", "subscriptions", 9.99, "2026-08-15", "Spotify");
   await debtPayment("checking", "visa", 400, "2026-08-20");
   await debtPayment("checking", "storeCard", 100, "2026-08-21");
   await debtPayment("checking", "studentLoan", 150, "2026-08-22");
@@ -327,11 +344,15 @@ const summary = await db.transaction(async (tx) => {
   await income("checking", 2400, "2026-09-01", "Job Paycheck");
   await allocate("rent", 900, "2026-09-01");
   await allocate("food", 400, "2026-09-01");
+  await allocate("subscriptions", 20, "2026-09-01");
   await allocate("emergencyFund", 300, "2026-09-01");
   await allocate("carFund", 300, "2026-09-01");
   await allocate("datesSocial", 100, "2026-09-01");
   await cashExpense("checking", "food", 140, "2026-09-05", "Grocery Store");
   await ccExpense("visa", "datesSocial", 60, "2026-09-07", "Dinner Out");
+  // Netflix's price ticked up $2 this cycle -- still within the detector's
+  // 5%/$2 tolerance, so it should still be recognized as the same subscription.
+  await ccExpense("visa", "subscriptions", 17.99, "2026-09-08", "Netflix");
 
   async function createGoal(name, targetAmount, targetDate, categoryKey) {
     await q`

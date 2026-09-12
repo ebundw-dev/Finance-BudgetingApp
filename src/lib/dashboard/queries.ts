@@ -5,6 +5,7 @@ import { accounts, categories, debts, transactions, users } from "@/db/schema";
 import { getAllocatedThisMonthByCategory } from "@/lib/categories/queries";
 import type { TargetType } from "@/lib/categories/targets";
 import { getDueAndUpcomingCounts } from "@/lib/scheduled/queries";
+import { getNewSubscriptionCount } from "@/lib/subscriptions/queries";
 
 export interface GoalCategoryProgress {
   id: string;
@@ -34,6 +35,7 @@ export interface DashboardData {
   earmarked: EarmarkedCategory[];
   dueScheduledCount: number;
   upcomingScheduledCount: number;
+  newSubscriptionCount: number;
 }
 
 function currentMonthRange(): { start: string; end: string } {
@@ -56,6 +58,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     goalCategories,
     allocatedThisMonth,
     { dueCount, upcomingCount },
+    newSubscriptionCount,
   ] = await Promise.all([
       db.select({ phase: users.phase }).from(users).where(eq(users.id, userId)),
       db
@@ -105,6 +108,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
         .orderBy(categories.sortOrder),
       getAllocatedThisMonthByCategory(userId),
       getDueAndUpcomingCounts(userId),
+      getNewSubscriptionCount(userId),
     ]);
 
   const totalCash = cashRow.totalCash;
@@ -152,5 +156,6 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     earmarked,
     dueScheduledCount: dueCount,
     upcomingScheduledCount: upcomingCount,
+    newSubscriptionCount,
   };
 }

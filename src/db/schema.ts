@@ -279,6 +279,39 @@ export const scheduledTransactions = pgTable(
   (table) => [check("scheduled_amount_positive", sql`${table.amount} > 0`)]
 );
 
+// One row per subscription-candidate signature (account + category + fuzzy
+// payee) the user has dismissed from /subscriptions -- keyed the same way
+// detectRecurringCandidates excludes an already-scheduled group, so a
+// dismissal sticks across page loads instead of being re-suggested every
+// time (detection runs live on each visit; see src/lib/subscriptions).
+export const dismissedSubscriptionCandidates = pgTable(
+  "dismissed_subscription_candidates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id),
+    payeeKey: text("payee_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("dismissed_subscription_candidates_signature_unique").on(
+      table.userId,
+      table.accountId,
+      table.categoryId,
+      table.payeeKey
+    ),
+  ]
+);
+
 export const debts = pgTable("debts", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

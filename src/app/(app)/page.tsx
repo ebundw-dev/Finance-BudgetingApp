@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Target,
   Bell,
+  Radar,
 } from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
@@ -60,6 +61,27 @@ export default async function Home() {
                   {data.dueScheduledCount > 0 && data.upcomingScheduledCount > 0
                     ? `Plus ${data.upcomingScheduledCount} more within 7 days. Tap to review.`
                     : "Tap to review, confirm, or skip."}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      ) : null}
+
+      {data.newSubscriptionCount > 0 ? (
+        <Link href="/subscriptions" className="mb-6 block">
+          <Card className="ring-1 ring-accent/30 transition-colors hover:bg-surface-hover">
+            <div className="flex items-center gap-3">
+              <div className="bg-accent/12 text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                <Radar size={18} strokeWidth={2} />
+              </div>
+              <div>
+                <div className="font-medium text-text">
+                  {data.newSubscriptionCount} new subscription
+                  {data.newSubscriptionCount === 1 ? "" : "s"} detected
+                </div>
+                <p className="text-text-secondary text-xs">
+                  Found in your transaction history. Tap to track or dismiss.
                 </p>
               </div>
             </div>

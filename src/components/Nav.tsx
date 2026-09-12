@@ -14,6 +14,7 @@ import {
   Calendar,
   TrendingUp,
   Repeat,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/categories", label: "Categories", icon: LayoutGrid },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/scheduled", label: "Scheduled", icon: Repeat },
+  { href: "/subscriptions", label: "Subscriptions", icon: Radar },
   { href: "/allocate", label: "Allocate", icon: SlidersHorizontal },
   { href: "/rules", label: "Rule Sets", icon: SplitSquareHorizontal },
   { href: "/goals", label: "Goals", icon: Flag },
