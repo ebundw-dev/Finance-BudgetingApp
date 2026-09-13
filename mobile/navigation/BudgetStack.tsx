@@ -7,11 +7,13 @@ import NewGoalScreen from "../screens/NewGoalScreen";
 import EditGoalScreen from "../screens/EditGoalScreen";
 import DebtsListScreen from "../screens/DebtsListScreen";
 import DebtDetailScreen from "../screens/DebtDetailScreen";
+import EditDebtScreen from "../screens/EditDebtScreen";
+import NewAccountScreen from "../screens/NewAccountScreen";
 import RuleSetsListScreen from "../screens/RuleSetsListScreen";
 import RuleSetDetailScreen from "../screens/RuleSetDetailScreen";
 import ScheduledScreen from "../screens/ScheduledScreen";
 import { colors } from "../lib/theme";
-import type { GoalListRow, RuleSet } from "../lib/api";
+import type { DebtRow, GoalListRow, RuleSet } from "../lib/api";
 
 export type BudgetStackParamList = {
   BudgetMenu: undefined;
@@ -22,6 +24,8 @@ export type BudgetStackParamList = {
   EditGoal: { goal: GoalListRow };
   Debts: undefined;
   DebtDetail: { id: string; name: string };
+  EditDebt: { debt: DebtRow };
+  NewAccount: { initialIsDebt?: boolean } | undefined;
   Rules: undefined;
   RuleDetail: { ruleSet: RuleSet };
   Scheduled: undefined;
@@ -53,6 +57,12 @@ export function BudgetStackScreen() {
         name="DebtDetail"
         component={DebtDetailScreen}
         options={({ route }) => ({ title: route.params.name })}
+      />
+      <Stack.Screen name="EditDebt" component={EditDebtScreen} options={{ title: "Edit Debt" }} />
+      <Stack.Screen
+        name="NewAccount"
+        component={NewAccountScreen}
+        options={{ title: "New Account", presentation: "modal" }}
       />
       <Stack.Screen name="Rules" component={RuleSetsListScreen} options={{ title: "Rule Sets" }} />
       <Stack.Screen

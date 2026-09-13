@@ -385,6 +385,29 @@ export async function fetchDebt(baseUrl: string, token: string, id: string): Pro
   return apiRequest<DebtRow>(baseUrl, token, `/api/debts/${id}`);
 }
 
+// Mirrors src/lib/api/debts.ts's UpdateDebtInput. There's no createDebt
+// fetcher -- a debt is created by creating an account with isDebt set
+// (see createAccount above).
+export interface UpdateDebtInput {
+  startingBalance: string;
+  minimumPayment: string | null;
+  apr: string | null;
+  targetPayoffDate: string | null;
+}
+
+export async function updateDebt(
+  baseUrl: string,
+  token: string,
+  id: string,
+  input: UpdateDebtInput
+): Promise<DebtRow> {
+  return apiRequest<DebtRow>(baseUrl, token, `/api/debts/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 // ---- Rule Sets (Phase 5) --------------------------------------------------
 
 // Mirrors src/lib/rules/queries.ts's RuleSetRowWithCategory -- what both

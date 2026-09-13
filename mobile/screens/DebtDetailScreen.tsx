@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Card } from "../components/Card";
@@ -18,7 +19,7 @@ type Phase = "loading" | "ready" | "error";
 
 type Props = NativeStackScreenProps<BudgetStackParamList, "DebtDetail">;
 
-export default function DebtDetailScreen({ route }: Props) {
+export default function DebtDetailScreen({ route, navigation }: Props) {
   const { id } = route.params;
   const { connection, openConnectionForm } = useConnection();
   const [phase, setPhase] = useState<Phase>("loading");
@@ -44,15 +45,11 @@ export default function DebtDetailScreen({ route }: Props) {
     [connection, id]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.resolve().then(() => {
-      if (!cancelled) load(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load(false);
+    }, [load])
+  );
 
   if (phase === "loading") {
     return (
@@ -100,6 +97,9 @@ export default function DebtDetailScreen({ route }: Props) {
               Reserved: {currency(debt.reservedBalance)} ({debt.categoryName})
             </Text>
           </View>
+          <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate("EditDebt", { debt })}>
+            <Ionicons name="pencil" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         <Card style={styles.owedCard}>
@@ -159,6 +159,14 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   name: {
     color: colors.text,
