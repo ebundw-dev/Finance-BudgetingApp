@@ -115,6 +115,45 @@ export async function fetchAccount(baseUrl: string, token: string, id: string): 
   return apiRequest<Account>(baseUrl, token, `/api/accounts/${id}`);
 }
 
+// Mirrors src/lib/api/accounts.ts's CreateAccountInput.
+export interface CreateAccountInput {
+  name: string;
+  type: AccountType;
+  currentBalance: string;
+  isCashAccount: boolean;
+  isDebt: boolean;
+}
+
+export async function createAccount(baseUrl: string, token: string, input: CreateAccountInput): Promise<Account> {
+  return apiRequest<Account>(baseUrl, token, "/api/accounts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// Mirrors src/lib/api/accounts.ts's UpdateAccountInput -- deliberately
+// excludes currentBalance (see that file's comment: balances should only
+// move through recorded transactions, never a direct edit).
+export interface UpdateAccountInput {
+  name: string;
+  type: AccountType;
+  isCashAccount: boolean;
+}
+
+export async function updateAccount(
+  baseUrl: string,
+  token: string,
+  id: string,
+  input: UpdateAccountInput
+): Promise<Account> {
+  return apiRequest<Account>(baseUrl, token, `/api/accounts/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 // ---- Categories (Phase 4) ----------------------------------------------
 
 // Mirrors src/lib/categories/queries.ts's CategoryGroupWithCategories --

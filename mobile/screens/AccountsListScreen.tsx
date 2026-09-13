@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { AccountRow } from "../components/AccountRow";
 import { ScreenHeader } from "../components/ScreenHeader";
 import { LoadingView } from "../components/LoadingView";
@@ -50,17 +52,14 @@ export default function AccountsListScreen({ navigation }: Props) {
     [connection]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    // See DashboardScreen.tsx for why this is deferred a microtask
-    // (react-hooks/set-state-in-effect).
-    Promise.resolve().then(() => {
-      if (!cancelled) runFetch(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [runFetch]);
+  // Refetch every time this tab/screen regains focus -- covers both
+  // switching back to it and returning here after creating or editing an
+  // account, same as TransactionsListScreen.
+  useFocusEffect(
+    useCallback(() => {
+      runFetch(false);
+    }, [runFetch])
+  );
 
   if (phase === "loading") {
     return (
@@ -111,6 +110,14 @@ export default function AccountsListScreen({ navigation }: Props) {
           />
         )}
       />
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("NewAccount")}
+        accessibilityLabel="Add account"
+      >
+        <Ionicons name="add" size={28} color={colors.onAccent} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -122,7 +129,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   header: {
     marginBottom: 14,
@@ -146,5 +153,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     marginTop: 24,
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
 });
