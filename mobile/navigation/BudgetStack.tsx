@@ -5,6 +5,8 @@ import GoalsListScreen from "../screens/GoalsListScreen";
 import GoalDetailScreen from "../screens/GoalDetailScreen";
 import DebtsListScreen from "../screens/DebtsListScreen";
 import DebtDetailScreen from "../screens/DebtDetailScreen";
+import RuleSetsListScreen from "../screens/RuleSetsListScreen";
+import RuleSetDetailScreen from "../screens/RuleSetDetailScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
 import { colors } from "../lib/theme";
 import type { GoalListRow, RuleSet } from "../lib/api";
@@ -25,9 +27,6 @@ const Stack = createNativeStackNavigator<BudgetStackParamList>();
 
 // Screens not yet built this phase -- swapped for the real thing one
 // commit at a time, same as every other screen in this stack.
-function RulesPlaceholder() {
-  return <PlaceholderScreen title="Rule Sets" icon="pie-chart-outline" />;
-}
 function ScheduledPlaceholder() {
   return <PlaceholderScreen title="Scheduled" icon="repeat-outline" />;
 }
@@ -55,7 +54,12 @@ export function BudgetStackScreen() {
         component={DebtDetailScreen}
         options={({ route }) => ({ title: route.params.name })}
       />
-      <Stack.Screen name="Rules" component={RulesPlaceholder} options={{ title: "Rule Sets" }} />
+      <Stack.Screen name="Rules" component={RuleSetsListScreen} options={{ title: "Rule Sets" }} />
+      <Stack.Screen
+        name="RuleDetail"
+        component={RuleSetDetailScreen}
+        options={({ route }) => ({ title: route.params.ruleSet.name })}
+      />
       <Stack.Screen name="Scheduled" component={ScheduledPlaceholder} options={{ title: "Scheduled" }} />
     </Stack.Navigator>
   );
