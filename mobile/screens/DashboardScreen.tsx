@@ -1,103 +1,74 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "../components/Card";
 import { StatCard } from "../components/StatCard";
 import { CategoryFundingRow } from "../components/CategoryFundingRow";
-import { ConnectionForm } from "../components/ConnectionForm";
+import { ScreenHeader } from "../components/ScreenHeader";
+import { LoadingView } from "../components/LoadingView";
+import { ErrorView } from "../components/ErrorView";
 import { colors } from "../lib/theme";
 import { currency } from "../lib/format";
 import { ApiError, fetchDashboard, type DashboardData } from "../lib/api";
-import { loadConnection, saveConnection, type Connection } from "../lib/connection";
+import { useConnection } from "../lib/ConnectionContext";
 
 type Phase = "loading" | "ready" | "error";
 
 export default function DashboardScreen() {
-  const [connection, setConnection] = useState<Connection | null>(null);
-  const [showConnectionForm, setShowConnectionForm] = useState(false);
+  const { connection, openConnectionForm } = useConnection();
   const [phase, setPhase] = useState<Phase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
-  const runFetch = useCallback(async (conn: Connection, isRefresh: boolean) => {
-    if (isRefresh) {
-      setRefreshing(true);
-      setRefreshError(null);
-    } else {
-      setPhase("loading");
-    }
-    try {
-      const result = await fetchDashboard(conn.baseUrl, conn.token);
-      setData(result);
-      setPhase("ready");
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Something went wrong.";
+  const runFetch = useCallback(
+    async (isRefresh: boolean) => {
       if (isRefresh) {
-        setRefreshError(message);
+        setRefreshing(true);
+        setRefreshError(null);
       } else {
-        setErrorMessage(message);
-        setPhase("error");
+        setPhase("loading");
       }
-    } finally {
-      if (isRefresh) setRefreshing(false);
-    }
-  }, []);
+      try {
+        const result = await fetchDashboard(connection.baseUrl, connection.token);
+        setData(result);
+        setPhase("ready");
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Something went wrong.";
+        if (isRefresh) {
+          setRefreshError(message);
+        } else {
+          setErrorMessage(message);
+          setPhase("error");
+        }
+      } finally {
+        if (isRefresh) setRefreshing(false);
+      }
+    },
+    [connection]
+  );
 
   useEffect(() => {
-    (async () => {
-      const conn = await loadConnection();
-      setConnection(conn);
-      if (conn.baseUrl && conn.token) {
-        runFetch(conn, false);
-      } else {
-        setShowConnectionForm(true);
-        setPhase("ready");
-      }
-    })();
+    let cancelled = false;
+    // Deferred a microtask so the initial fetch's setState calls happen
+    // after the effect body returns, not synchronously within it (see
+    // react-hooks/set-state-in-effect) -- runFetch is also reused
+    // directly from event handlers (Retry, pull-to-refresh) where a
+    // synchronous setState is fine.
+    Promise.resolve().then(() => {
+      if (!cancelled) runFetch(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [runFetch]);
-
-  async function handleConnectionSubmit(conn: Connection) {
-    await saveConnection(conn);
-    setConnection(conn);
-    setShowConnectionForm(false);
-    runFetch(conn, false);
-  }
-
-  if (showConnectionForm || !connection) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.formScreen} keyboardShouldPersistTaps="handled">
-          <Text style={styles.eyebrow}>Overview</Text>
-          <Text style={styles.title}>Connect to Ledger</Text>
-          <Text style={styles.subtitle}>
-            Enter the API Base URL and token from the web app’s Settings page.
-          </Text>
-          {connection ? (
-            <ConnectionForm initial={connection} onSubmit={handleConnectionSubmit} />
-          ) : null}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
 
   if (phase === "loading") {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingLabel}>Loading dashboard…</Text>
-        </View>
+        <LoadingView label="Loading dashboard…" />
       </SafeAreaView>
     );
   }
@@ -105,19 +76,12 @@ export default function DashboardScreen() {
   if (phase === "error") {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <View style={styles.errorBadge}>
-            <Ionicons name="alert-circle" size={26} color={colors.danger} />
-          </View>
-          <Text style={styles.errorTitle}>Couldn’t load dashboard</Text>
-          <Text style={styles.errorMessage}>{errorMessage}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => runFetch(connection, false)}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowConnectionForm(true)}>
-            <Text style={styles.editConnectionLink}>Change connection</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorView
+          title="Couldn’t load dashboard"
+          message={errorMessage}
+          onRetry={() => runFetch(false)}
+          onChangeConnection={openConnectionForm}
+        />
       </SafeAreaView>
     );
   }
@@ -130,18 +94,10 @@ export default function DashboardScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => runFetch(connection, true)} tintColor={colors.accent} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => runFetch(true)} tintColor={colors.accent} />
         }
       >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.eyebrow}>Overview</Text>
-            <Text style={styles.title}>Where you stand, today.</Text>
-          </View>
-          <TouchableOpacity style={styles.gearButton} onPress={() => setShowConnectionForm(true)}>
-            <Ionicons name="settings-outline" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader eyebrow="Overview" title="Where you stand, today." />
 
         {refreshError ? (
           <View style={styles.refreshErrorBanner}>
@@ -252,89 +208,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 14,
-  },
-  formScreen: {
-    flexGrow: 1,
-    padding: 20,
-    justifyContent: "center",
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 32,
-  },
-  loadingLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  errorBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: `${colors.danger}1f`,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  errorTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  errorMessage: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  retryButton: {
-    marginTop: 10,
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 11,
-  },
-  retryButtonText: {
-    color: colors.onAccent,
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  editConnectionLink: {
-    color: colors.accent,
-    fontSize: 13,
-    marginTop: 6,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  eyebrow: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 4,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginTop: 6,
-  },
-  gearButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
   },
   refreshErrorBanner: {
     backgroundColor: `${colors.danger}1f`,
