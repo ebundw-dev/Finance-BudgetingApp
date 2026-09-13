@@ -71,6 +71,13 @@
       "when": 1789255723636,
       "tag": "0009_quick_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789326803402,
+      "tag": "0010_left_mastermind",
+      "breakpoints": true
     }
   ]
 }

@@ -932,6 +932,82 @@ export async function recordBulkAllocation(
   return created;
 }
 
+export interface RecordReconciliationParams {
+  accountId: string;
+  statementBalance: string;
+  notes?: string;
+}
+
+// Corrects drift between Ledger's computed cash-account balance and a
+// real bank-statement balance the user just typed in. Scoped to cash
+// accounts only (isCashAccount) -- a credit card's balance is governed by
+// its debt reserve category mechanic (see CLAUDE.md), and correctly
+// reconciling that would mean also adjusting the reserve category, which
+// this feature doesn't attempt; investment/other non-cash accounts have
+// no "statement balance" concept Ledger tracks cash against at all.
+//
+// Deliberately touches only the account's currentBalance, no category --
+// economically identical to an unattributed, signed income/expense, so
+// Unallocated Cash absorbs the entire delta (up for a surplus, down for
+// a shortfall), same as CLAUDE.md's Income row does for a surplus. A
+// zero delta ("confirms a match") writes no transaction row at all --
+// there's nothing to correct or audit, just the last-reconciled
+// bookkeeping fields.
+export async function recordReconciliation(tx: Tx, userId: string, params: RecordReconciliationParams) {
+  if (Number.isNaN(Number(params.statementBalance))) {
+    throw new ValidationError("Statement balance must be a number.");
+  }
+
+  const account = await lockAccount(tx, userId, params.accountId);
+  if (!account.isCashAccount) {
+    throw new ValidationError("Only cash accounts can be reconciled.");
+  }
+
+  const delta = Number(params.statementBalance) - Number(account.currentBalance);
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (delta === 0) {
+    await tx
+      .update(accounts)
+      .set({ lastReconciledAt: new Date(), lastReconciledBalance: params.statementBalance })
+      .where(eq(accounts.id, account.id));
+    return { matched: true as const, delta: "0.00" };
+  }
+
+  if (delta < 0) {
+    const unallocated = await getUnallocatedCash(tx, userId);
+    if (unallocated + delta < -0.001) {
+      throw new InsufficientUnallocatedCashError(
+        `This shortfall (${Math.abs(delta).toFixed(2)}) would take Unallocated Cash below zero -- only ${unallocated.toFixed(2)} is unallocated. Reallocate some categories back to Unallocated Cash first.`
+      );
+    }
+  }
+
+  const [txn] = await tx
+    .insert(transactions)
+    .values({
+      userId,
+      type: "reconciliation",
+      accountId: account.id,
+      amount: Math.abs(delta).toFixed(2),
+      reconciliationDelta: delta.toFixed(2),
+      date: today,
+      notes: params.notes,
+    })
+    .returning();
+
+  await tx
+    .update(accounts)
+    .set({
+      currentBalance: sql`${accounts.currentBalance} + ${delta.toFixed(2)}`,
+      lastReconciledAt: new Date(),
+      lastReconciledBalance: params.statementBalance,
+    })
+    .where(eq(accounts.id, account.id));
+
+  return { matched: false as const, delta: delta.toFixed(2), transaction: txn };
+}
+
 // Reverses whatever recordX function originally created this row --
 // mirror image of each one, dispatched by the row's own `type`. No
 // dedicated web UI calls this today (there is no delete-transaction
@@ -1128,6 +1204,34 @@ export async function deleteTransaction(tx: Tx, userId: string, transactionId: s
         .update(categories)
         .set({ allocatedBalance: sql`${categories.allocatedBalance} - ${txnRow.amount}` })
         .where(eq(categories.id, category.id));
+      break;
+    }
+
+    case "reconciliation": {
+      if (!txnRow.accountId || txnRow.reconciliationDelta === null) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing its account or delta.`);
+      }
+      await lockAccount(tx, userId, txnRow.accountId);
+      const delta = Number(txnRow.reconciliationDelta);
+
+      // A surplus reconciliation raised Unallocated Cash when it posted;
+      // reversing it lowers Cash again, which can legitimately fail if
+      // some of that surplus has since been allocated into categories.
+      // A shortfall reconciliation only ever gets safer to reverse
+      // (reversing it raises Cash back), so no guard is needed there.
+      if (delta > 0) {
+        const unallocated = await getUnallocatedCash(tx, userId);
+        if (unallocated - delta < -0.001) {
+          throw new InsufficientUnallocatedCashError(
+            `Reversing this reconciliation would take Unallocated Cash below zero -- only ${unallocated.toFixed(2)} is unallocated.`
+          );
+        }
+      }
+
+      await tx
+        .update(accounts)
+        .set({ currentBalance: sql`${accounts.currentBalance} - ${delta.toFixed(2)}` })
+        .where(eq(accounts.id, txnRow.accountId));
       break;
     }
   }

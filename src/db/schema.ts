@@ -59,6 +59,12 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "debt_payment",
   "transfer",
   "category_reallocation",
+  // Phase 11: corrects drift between Ledger's computed cash-account
+  // balance and a real bank-statement balance. Touches only the account's
+  // currentBalance (no category effect), so Unallocated Cash absorbs the
+  // whole delta -- economically a signed, categoryless income/expense.
+  // See recordReconciliation in src/lib/accounting/engine.ts.
+  "reconciliation",
 ]);
 
 export const scheduledCadenceEnum = pgEnum("scheduled_cadence", [
@@ -116,6 +122,13 @@ export const accounts = pgTable("accounts", {
     .notNull()
     .default("0"),
   isArchived: boolean("is_archived").notNull().default(false),
+  // Phase 11 reconciliation: null until the account has been reconciled
+  // at least once. lastReconciledBalance is the statement balance entered
+  // at that time (not necessarily equal to currentBalance today, since
+  // more transactions may have posted since) -- purely informational,
+  // shown on the account's Reconcile screen as "last reconciled".
+  lastReconciledAt: timestamp("last_reconciled_at", { withTimezone: true }),
+  lastReconciledBalance: numeric("last_reconciled_balance", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -256,6 +269,14 @@ export const transactions = pgTable(
       () => categories.id
     ),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    // Only set (and only meaningful) for type "reconciliation" -- the
+    // signed statementBalance-minus-currentBalance delta at post time.
+    // `amount` above stays the always-positive abs(delta), matching the
+    // "amount is always stored positive" rule every other type follows;
+    // this is the one place direction can't be inferred from `type`
+    // alone (a reconciliation can go either way), so it gets its own
+    // column instead of loosening amount's CHECK constraint.
+    reconciliationDelta: numeric("reconciliation_delta", { precision: 12, scale: 2 }),
     date: date("date").notNull(),
     source: text("source"),
     notes: text("notes"),
