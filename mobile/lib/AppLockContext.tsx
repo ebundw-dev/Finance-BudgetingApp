@@ -85,6 +85,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (BYPASS_ERRORS.has(result.error)) {
+        console.warn(`[AppLock] Bypassing the gate -- authenticateAsync reported "${result.error}".`);
         setLocked(false);
         return;
       }
@@ -104,17 +105,47 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Auto-prompt whenever we transition into a locked state (initial load,
-  // or re-locked after backgrounding) -- deferred a microtask so this
-  // effect's setState calls happen after it returns, not synchronously
-  // within it (react-hooks/set-state-in-effect; see DashboardScreen.tsx).
+  // or re-locked after backgrounding).
+  //
+  // This waits for a CONFIRMED AppState === "active" before ever calling
+  // authenticateAsync() -- this used to fire as soon as the microtask
+  // below ran, which on a cold start can be before iOS has finished
+  // bringing the app to the foreground. Calling the biometric prompt
+  // during that transitional window fails immediately with no visible
+  // system UI and an ambiguous error, which BYPASS_ERRORS below then
+  // (incorrectly) treated as "this device has no biometrics at all" and
+  // silently unlocked -- the actual cause of the cold-start bypass this
+  // fixes. The re-lock-after-backgrounding path never hit this: it only
+  // sets `locked` true from inside the AppState listener's own "active"
+  // branch further down, so AppState was already confirmed active by
+  // construction before that path ever ran attemptUnlock().
   useEffect(() => {
     if (!loaded || !enabled || !locked) return;
     let cancelled = false;
-    Promise.resolve().then(() => {
-      if (!cancelled) attemptUnlock();
-    });
+    let activeSubscription: { remove: () => void } | null = null;
+
+    function attemptWhenActive() {
+      if (cancelled) return;
+      if (AppState.currentState === "active") {
+        attemptUnlock();
+        return;
+      }
+      activeSubscription = AppState.addEventListener("change", (state) => {
+        if (state !== "active" || cancelled) return;
+        activeSubscription?.remove();
+        activeSubscription = null;
+        attemptUnlock();
+      });
+    }
+
+    // Deferred a microtask so this effect's setState calls happen after
+    // it returns, not synchronously within it (react-hooks/set-state-in-effect;
+    // see DashboardScreen.tsx).
+    Promise.resolve().then(attemptWhenActive);
+
     return () => {
       cancelled = true;
+      activeSubscription?.remove();
     };
   }, [loaded, enabled, locked, attemptUnlock]);
 
