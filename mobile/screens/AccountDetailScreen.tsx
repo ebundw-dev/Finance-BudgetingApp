@@ -110,8 +110,24 @@ export default function AccountDetailScreen({ route, navigation }: Props) {
         <Card style={styles.sectionCard}>
           <Row label="Account Type" value={ACCOUNT_TYPE_LABELS[account.type]} />
           <Row label="Cash Account" value={account.isCashAccount ? "Yes" : "No"} />
+          {account.isCashAccount ? (
+            <Row
+              label="Last Reconciled"
+              value={account.lastReconciledAt ? account.lastReconciledAt.slice(0, 10) : "Never"}
+            />
+          ) : null}
           <Row label="Created" value={account.createdAt.slice(0, 10)} last />
         </Card>
+
+        {account.isCashAccount ? (
+          <TouchableOpacity
+            style={styles.reconcileButton}
+            onPress={() => navigation.navigate("ReconcileAccount", { account })}
+          >
+            <Ionicons name="checkmark-done-outline" size={17} color={colors.accent} />
+            <Text style={styles.reconcileButtonText}>Reconcile</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -191,6 +207,22 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     paddingVertical: 4,
+  },
+  reconcileButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: `${colors.accent}4d`,
+    backgroundColor: `${colors.accent}14`,
+    borderRadius: 10,
+    paddingVertical: 13,
+  },
+  reconcileButtonText: {
+    color: colors.accent,
+    fontWeight: "700",
+    fontSize: 14,
   },
   row: {
     flexDirection: "row",

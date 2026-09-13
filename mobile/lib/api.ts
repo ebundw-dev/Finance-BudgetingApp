@@ -104,6 +104,8 @@ export interface Account {
   isCashAccount: boolean;
   currentBalance: string;
   isArchived: boolean;
+  lastReconciledAt: string | null;
+  lastReconciledBalance: string | null;
   createdAt: string;
 }
 
@@ -149,6 +151,31 @@ export async function updateAccount(
 ): Promise<Account> {
   return apiRequest<Account>(baseUrl, token, `/api/accounts/${id}`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// Mirrors src/lib/api/accounts.ts's ReconcileAccountInput -- what POST
+// /api/accounts/[id]/reconcile takes.
+export interface ReconcileAccountInput {
+  statementBalance: string;
+  notes?: string;
+}
+
+export interface ReconcileAccountResult {
+  matched: boolean;
+  delta: string;
+}
+
+export async function reconcileAccount(
+  baseUrl: string,
+  token: string,
+  id: string,
+  input: ReconcileAccountInput
+): Promise<ReconcileAccountResult> {
+  return apiRequest<ReconcileAccountResult>(baseUrl, token, `/api/accounts/${id}/reconcile`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });

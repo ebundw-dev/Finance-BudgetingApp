@@ -3,6 +3,7 @@ import AccountsListScreen from "../screens/AccountsListScreen";
 import AccountDetailScreen from "../screens/AccountDetailScreen";
 import NewAccountScreen from "../screens/NewAccountScreen";
 import EditAccountScreen from "../screens/EditAccountScreen";
+import ReconcileAccountScreen from "../screens/ReconcileAccountScreen";
 import { colors } from "../lib/theme";
 import type { Account } from "../lib/api";
 
@@ -11,6 +12,7 @@ export type AccountsStackParamList = {
   AccountDetail: { id: string; name: string };
   NewAccount: undefined;
   EditAccount: { account: Account };
+  ReconcileAccount: { account: Account };
 };
 
 const Stack = createNativeStackNavigator<AccountsStackParamList>();
@@ -36,6 +38,11 @@ export function AccountsStackScreen() {
         options={{ title: "New Account", presentation: "modal" }}
       />
       <Stack.Screen name="EditAccount" component={EditAccountScreen} options={{ title: "Edit Account" }} />
+      <Stack.Screen
+        name="ReconcileAccount"
+        component={ReconcileAccountScreen}
+        options={{ title: "Reconcile" }}
+      />
     </Stack.Navigator>
   );
 }
