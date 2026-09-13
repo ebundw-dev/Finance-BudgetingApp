@@ -11,6 +11,8 @@ import EditDebtScreen from "../screens/EditDebtScreen";
 import NewAccountScreen from "../screens/NewAccountScreen";
 import RuleSetsListScreen from "../screens/RuleSetsListScreen";
 import RuleSetDetailScreen from "../screens/RuleSetDetailScreen";
+import NewRuleSetScreen from "../screens/NewRuleSetScreen";
+import EditRuleSetScreen from "../screens/EditRuleSetScreen";
 import ScheduledScreen from "../screens/ScheduledScreen";
 import { colors } from "../lib/theme";
 import type { DebtRow, GoalListRow, RuleSet } from "../lib/api";
@@ -28,6 +30,8 @@ export type BudgetStackParamList = {
   NewAccount: { initialIsDebt?: boolean } | undefined;
   Rules: undefined;
   RuleDetail: { ruleSet: RuleSet };
+  NewRuleSet: undefined;
+  EditRuleSet: { ruleSet: RuleSet };
   Scheduled: undefined;
 };
 
@@ -68,6 +72,16 @@ export function BudgetStackScreen() {
       <Stack.Screen
         name="RuleDetail"
         component={RuleSetDetailScreen}
+        options={({ route }) => ({ title: route.params.ruleSet.name })}
+      />
+      <Stack.Screen
+        name="NewRuleSet"
+        component={NewRuleSetScreen}
+        options={{ title: "New Rule Set", presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="EditRuleSet"
+        component={EditRuleSetScreen}
         options={({ route }) => ({ title: route.params.ruleSet.name })}
       />
       <Stack.Screen name="Scheduled" component={ScheduledScreen} options={{ title: "Scheduled" }} />

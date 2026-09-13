@@ -431,6 +431,42 @@ export async function fetchRuleSets(baseUrl: string, token: string): Promise<Rul
   return apiRequest<RuleSet[]>(baseUrl, token, "/api/rules");
 }
 
+// Mirrors src/lib/api/rules.ts's RuleSetRowInput/RuleSetInput.
+export interface RuleSetRowInput {
+  categoryId: string;
+  percentage: string;
+}
+
+export interface CreateRuleSetInput {
+  ruleName: string;
+  rows: RuleSetRowInput[];
+}
+
+export async function createRuleSet(baseUrl: string, token: string, input: CreateRuleSetInput): Promise<RuleSet> {
+  return apiRequest<RuleSet>(baseUrl, token, "/api/rules", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export interface UpdateRuleSetInput {
+  rows: RuleSetRowInput[];
+}
+
+export async function updateRuleSet(
+  baseUrl: string,
+  token: string,
+  name: string,
+  input: UpdateRuleSetInput
+): Promise<RuleSet> {
+  return apiRequest<RuleSet>(baseUrl, token, `/api/rules/${encodeURIComponent(name)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 // ---- Scheduled (Phase 5) --------------------------------------------------
 
 // Mirrors src/lib/scheduled/queries.ts's raw scheduledTransactions row --

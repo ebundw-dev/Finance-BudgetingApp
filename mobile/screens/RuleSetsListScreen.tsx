@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RuleSetCard } from "../components/RuleSetCard";
 import { ScreenHeader } from "../components/ScreenHeader";
@@ -40,15 +42,11 @@ export default function RuleSetsListScreen({ navigation }: Props) {
     [connection]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.resolve().then(() => {
-      if (!cancelled) load(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load(false);
+    }, [load])
+  );
 
   if (phase === "loading") {
     return (
@@ -91,6 +89,14 @@ export default function RuleSetsListScreen({ navigation }: Props) {
           <RuleSetCard ruleSet={item} onPress={() => navigation.navigate("RuleDetail", { ruleSet: item })} />
         )}
       />
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("NewRuleSet")}
+        accessibilityLabel="Add rule set"
+      >
+        <Ionicons name="add" size={28} color={colors.onAccent} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -102,7 +108,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   header: {
     marginBottom: 14,
@@ -115,5 +121,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     marginTop: 24,
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
 });

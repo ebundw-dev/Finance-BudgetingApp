@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -9,11 +9,10 @@ import type { BudgetStackParamList } from "../navigation/BudgetStack";
 
 type Props = NativeStackScreenProps<BudgetStackParamList, "RuleDetail">;
 
-// Read-only, and (like GoalDetailScreen) doesn't re-fetch: GET
-// /api/rules already returns every rule set's full row list, so the
-// list screen's entry is already everything a single-rule-set fetch
-// would provide.
-export default function RuleSetDetailScreen({ route }: Props) {
+// Doesn't re-fetch, same as GoalDetailScreen: GET /api/rules already
+// returns every rule set's full row list, so the list screen's entry is
+// already everything a single-rule-set fetch would provide.
+export default function RuleSetDetailScreen({ route, navigation }: Props) {
   const { ruleSet } = route.params;
 
   return (
@@ -24,6 +23,12 @@ export default function RuleSetDetailScreen({ route }: Props) {
             <Ionicons name="pie-chart" size={22} color={toneText.accent} />
           </View>
           <Text style={styles.name}>{ruleSet.name}</Text>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate("EditRuleSet", { ruleSet })}
+          >
+            <Ionicons name="pencil" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         <Card>
@@ -61,5 +66,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 20,
     fontWeight: "700",
+    flex: 1,
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
