@@ -13,7 +13,7 @@ import { listDebts } from "@/lib/debts/queries";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { ProgressBar } from "@/components/ProgressBar";
-import { currency, link } from "@/lib/ui";
+import { buttonSecondary, currency, link } from "@/lib/ui";
 
 // Same account-type -> icon/badge mapping as src/app/(app)/accounts/page.tsx
 // -- a debt's card shows the same icon its underlying account does there,
@@ -42,11 +42,16 @@ export default async function DebtsPage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Make it smaller"
-        title="Debts."
-        subtitle="What remains, what you're paying, and how fast it's shrinking."
-      />
+      <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Make it smaller"
+          title="Debts."
+          subtitle="What remains, what you're paying, and how fast it's shrinking."
+        />
+        <Link href="/debts/planner" className={`${buttonSecondary} mt-1`}>
+          Payoff planner
+        </Link>
+      </div>
       <p className="mb-10 text-sm text-text-secondary">
         Add a new debt from{" "}
         <Link href="/accounts/new" className={link}>
