@@ -1,6 +1,9 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import BudgetMenuScreen from "../screens/BudgetMenuScreen";
 import AllocateScreen from "../screens/AllocateScreen";
+import CategoriesListScreen from "../screens/CategoriesListScreen";
+import NewCategoryScreen from "../screens/NewCategoryScreen";
+import EditCategoryScreen from "../screens/EditCategoryScreen";
 import GoalsListScreen from "../screens/GoalsListScreen";
 import GoalDetailScreen from "../screens/GoalDetailScreen";
 import NewGoalScreen from "../screens/NewGoalScreen";
@@ -15,11 +18,14 @@ import NewRuleSetScreen from "../screens/NewRuleSetScreen";
 import EditRuleSetScreen from "../screens/EditRuleSetScreen";
 import ScheduledScreen from "../screens/ScheduledScreen";
 import { colors } from "../lib/theme";
-import type { DebtRow, GoalListRow, RuleSet } from "../lib/api";
+import type { Category, DebtRow, GoalListRow, RuleSet } from "../lib/api";
 
 export type BudgetStackParamList = {
   BudgetMenu: undefined;
   Allocate: undefined;
+  Categories: undefined;
+  NewCategory: undefined;
+  EditCategory: { category: Category };
   Goals: undefined;
   GoalDetail: { goal: GoalListRow };
   NewGoal: undefined;
@@ -48,6 +54,17 @@ export function BudgetStackScreen() {
     >
       <Stack.Screen name="BudgetMenu" component={BudgetMenuScreen} options={{ title: "Budget" }} />
       <Stack.Screen name="Allocate" component={AllocateScreen} options={{ title: "Allocate" }} />
+      <Stack.Screen name="Categories" component={CategoriesListScreen} options={{ title: "Categories" }} />
+      <Stack.Screen
+        name="NewCategory"
+        component={NewCategoryScreen}
+        options={{ title: "New Category", presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="EditCategory"
+        component={EditCategoryScreen}
+        options={({ route }) => ({ title: route.params.category.name })}
+      />
       <Stack.Screen name="Goals" component={GoalsListScreen} options={{ title: "Goals" }} />
       <Stack.Screen
         name="GoalDetail"

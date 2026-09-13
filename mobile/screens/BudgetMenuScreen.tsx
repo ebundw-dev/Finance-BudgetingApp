@@ -17,6 +17,7 @@ type IconName = ComponentProps<typeof Ionicons>["name"];
 // tabs -- past ~5 tabs a phone-width bar starts clipping labels.
 const ITEMS: { route: keyof BudgetStackParamList; label: string; subtitle: string; icon: IconName; tone: Tone }[] = [
   { route: "Allocate", label: "Allocate", subtitle: "Assign unallocated cash to categories", icon: "options", tone: "accent" },
+  { route: "Categories", label: "Categories", subtitle: "Targets, priority, and archiving", icon: "pricetags", tone: "default" },
   { route: "Goals", label: "Goals", subtitle: "Progress toward savings targets", icon: "flag", tone: "success" },
   { route: "Debts", label: "Debts", subtitle: "Balances, APR, and payoff targets", icon: "card", tone: "danger" },
   { route: "Rules", label: "Rule Sets", subtitle: "Percentage splits for Auto-Allocate", icon: "pie-chart", tone: "info" },

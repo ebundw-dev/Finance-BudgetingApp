@@ -156,8 +156,9 @@ export async function updateAccount(
 
 // ---- Categories (Phase 4) ----------------------------------------------
 
-// Mirrors src/lib/categories/queries.ts's CategoryGroupWithCategories --
-// the exact shape GET /api/categories returns.
+// Mirrors src/lib/categories/queries.ts's CategoryGroupWithCategories,
+// plus an allocatedThisMonth field GET /api/categories merges in (see
+// that route's comment) that the base query doesn't carry.
 export interface Category {
   id: string;
   userId: string;
@@ -170,6 +171,7 @@ export interface Category {
   targetCadence: "weekly" | "monthly" | null;
   targetDate: string | null;
   allocatedBalance: string;
+  allocatedThisMonth: string;
   sortOrder: number;
   isArchived: boolean;
   createdAt: string;
@@ -183,6 +185,50 @@ export interface CategoryGroup {
 
 export async function fetchCategories(baseUrl: string, token: string): Promise<CategoryGroup[]> {
   return apiRequest<CategoryGroup[]>(baseUrl, token, "/api/categories");
+}
+
+// Mirrors src/lib/api/categories.ts's CreateCategoryInput.
+export interface CreateCategoryInput {
+  groupId: string;
+  name: string;
+  categoryType: "spending" | "goal";
+}
+
+export async function createCategory(
+  baseUrl: string,
+  token: string,
+  input: CreateCategoryInput
+): Promise<Category> {
+  return apiRequest<Category>(baseUrl, token, "/api/categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// Mirrors src/lib/api/categories.ts's UpdateCategoryInput -- groupId/
+// categoryType aren't included since neither is editable there either.
+export interface UpdateCategoryInput {
+  name: string;
+  targetType: TargetType | null;
+  targetAmount: string | null;
+  targetCadence: "weekly" | "monthly" | null;
+  targetDate: string | null;
+  priority: "P1" | "P2" | "P3" | "P4" | null;
+  isArchived: boolean;
+}
+
+export async function updateCategory(
+  baseUrl: string,
+  token: string,
+  id: string,
+  input: UpdateCategoryInput
+): Promise<Category> {
+  return apiRequest<Category>(baseUrl, token, `/api/categories/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 }
 
 // ---- Transactions (Phase 4) --------------------------------------------
