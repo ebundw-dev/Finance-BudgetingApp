@@ -34,6 +34,9 @@ const config: ExpoConfig = {
       // to the user as a one-time permission prompt.
       NSLocalNetworkUsageDescription:
         "Ledger uses your local network to reach your Ledger server while developing.",
+      // Required by iOS before an app may use Face ID -- shown as a
+      // one-time permission prompt (Phase 6 app-lock gate).
+      NSFaceIDUsageDescription: "Ledger uses Face ID to keep your budget locked when you're not using it.",
     },
   },
   android: {

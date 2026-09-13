@@ -1,10 +1,11 @@
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "../components/Card";
 import { ScreenHeader } from "../components/ScreenHeader";
 import { colors } from "../lib/theme";
 import { useConnection } from "../lib/ConnectionContext";
+import { useAppLock } from "../lib/AppLockContext";
 
 // Masks the middle of the token, showing just enough of each end that
 // the user can visually match it against the name they gave it in the
@@ -16,6 +17,7 @@ function maskToken(token: string): string {
 
 export default function SettingsScreen() {
   const { connection, disconnect } = useConnection();
+  const { enabled: appLockEnabled, setEnabled: setAppLockEnabled } = useAppLock();
 
   function confirmDisconnect() {
     Alert.alert(
@@ -37,6 +39,24 @@ export default function SettingsScreen() {
           <Text style={styles.sectionHeading}>Connected Account</Text>
           <Row label="API Base URL" value={connection.baseUrl} />
           <Row label="API Token" value={maskToken(connection.token)} last />
+        </Card>
+
+        <Card style={styles.section}>
+          <Text style={styles.sectionHeading}>Security</Text>
+          <View style={styles.lockRow}>
+            <View style={styles.lockText}>
+              <Text style={styles.lockLabel}>Require Face ID / Touch ID</Text>
+              <Text style={styles.lockCaption}>
+                Locks the app on launch and after it’s been backgrounded a minute or more.
+              </Text>
+            </View>
+            <Switch
+              value={appLockEnabled}
+              onValueChange={setAppLockEnabled}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={colors.surface}
+            />
+          </View>
         </Card>
 
         <TouchableOpacity style={styles.disconnectButton} onPress={confirmDisconnect}>
@@ -115,6 +135,27 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flexShrink: 1,
     textAlign: "right",
+  },
+  lockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    gap: 12,
+  },
+  lockText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  lockLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  lockCaption: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 3,
   },
   disconnectButton: {
     flexDirection: "row",
