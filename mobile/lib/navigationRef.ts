@@ -35,10 +35,9 @@ export function navigateToScheduled(): void {
   navigateWhenReady(() => navigationRef.navigate("Budget", { screen: "Scheduled" }));
 }
 
-// No dedicated Subscriptions screen exists on mobile yet -- the
-// newSubscriptionCount alert lives on the Dashboard card
-// (screens/DashboardScreen.tsx), so that's the deep-link target for a
-// tapped subscriptions notification.
+// Phase 10 added a real Subscriptions screen (Budget > Subscriptions) --
+// this used to fall back to Dashboard (the only place the
+// newSubscriptionCount alert lived before that screen existed).
 export function navigateToSubscriptionsAlert(): void {
-  navigateWhenReady(() => navigationRef.navigate("Dashboard"));
+  navigateWhenReady(() => navigationRef.navigate("Budget", { screen: "Subscriptions" }));
 }

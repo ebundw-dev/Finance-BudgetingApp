@@ -17,6 +17,8 @@ import RuleSetDetailScreen from "../screens/RuleSetDetailScreen";
 import NewRuleSetScreen from "../screens/NewRuleSetScreen";
 import EditRuleSetScreen from "../screens/EditRuleSetScreen";
 import ScheduledScreen from "../screens/ScheduledScreen";
+import SubscriptionsScreen from "../screens/SubscriptionsScreen";
+import SpendingReportScreen from "../screens/SpendingReportScreen";
 import { colors } from "../lib/theme";
 import type { Category, DebtRow, GoalListRow, RuleSet } from "../lib/api";
 
@@ -39,6 +41,8 @@ export type BudgetStackParamList = {
   NewRuleSet: undefined;
   EditRuleSet: { ruleSet: RuleSet };
   Scheduled: undefined;
+  Subscriptions: undefined;
+  SpendingReport: undefined;
 };
 
 const Stack = createNativeStackNavigator<BudgetStackParamList>();
@@ -102,6 +106,12 @@ export function BudgetStackScreen() {
         options={({ route }) => ({ title: route.params.ruleSet.name })}
       />
       <Stack.Screen name="Scheduled" component={ScheduledScreen} options={{ title: "Scheduled" }} />
+      <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: "Subscriptions" }} />
+      <Stack.Screen
+        name="SpendingReport"
+        component={SpendingReportScreen}
+        options={{ title: "Spending Breakdown" }}
+      />
     </Stack.Navigator>
   );
 }

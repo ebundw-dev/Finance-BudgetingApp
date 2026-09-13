@@ -639,3 +639,93 @@ export async function skipScheduled(
 ): Promise<{ id: string; skipped: true; nextDueDate: string }> {
   return apiRequest(baseUrl, token, `/api/scheduled/${id}/skip`, { method: "POST" });
 }
+
+// Mirrors src/lib/api/scheduled.ts's CreateScheduledInput, "expense"
+// fields only -- this is all the Subscriptions screen's "Track it" button
+// (Phase 10) needs; type is always "expense" for a detected candidate.
+export interface CreateScheduledExpenseInput {
+  type: "expense";
+  description: string;
+  amount: string;
+  cadence: "weekly" | "biweekly" | "monthly" | "yearly" | "custom_days";
+  nextDueDate: string;
+  accountId: string;
+  categoryId: string;
+}
+
+export async function createScheduledExpense(
+  baseUrl: string,
+  token: string,
+  input: CreateScheduledExpenseInput
+): Promise<ScheduledTransactionRow> {
+  return apiRequest<ScheduledTransactionRow>(baseUrl, token, "/api/scheduled", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// ---- Subscriptions (Phase 10) ------------------------------------------
+
+// Mirrors src/lib/subscriptions/queries.ts's SubscriptionCandidateDisplay
+// -- the exact shape GET /api/subscriptions returns. Only these three
+// cadences are ever inferred by detectRecurringCandidates (see
+// src/lib/subscriptions/detect.ts).
+export interface SubscriptionCandidate {
+  accountId: string;
+  categoryId: string;
+  payeeKey: string;
+  payee: string;
+  averageAmount: string;
+  cadence: "weekly" | "monthly" | "yearly";
+  occurrenceCount: number;
+  lastSeenDate: string;
+  nextPredictedDate: string;
+  transactionIds: string[];
+  accountName: string;
+  categoryName: string;
+}
+
+export async function fetchSubscriptionCandidates(baseUrl: string, token: string): Promise<SubscriptionCandidate[]> {
+  return apiRequest<SubscriptionCandidate[]>(baseUrl, token, "/api/subscriptions");
+}
+
+// Mirrors src/lib/api/subscriptions.ts's DismissCandidateInput.
+export interface DismissCandidateInput {
+  accountId: string;
+  categoryId: string;
+  payeeKey: string;
+}
+
+export async function dismissSubscriptionCandidate(
+  baseUrl: string,
+  token: string,
+  input: DismissCandidateInput
+): Promise<{ dismissed: boolean }> {
+  return apiRequest<{ dismissed: boolean }>(baseUrl, token, "/api/subscriptions/dismiss", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// ---- Spending Report (Phase 10) ----------------------------------------
+
+// Mirrors src/lib/reports/queries.ts's CategorySpendingRow -- the exact
+// shape GET /api/reports/spending returns, already sorted descending by
+// total.
+export interface CategorySpendingRow {
+  categoryId: string;
+  categoryName: string;
+  groupName: string;
+  total: string;
+}
+
+export async function fetchSpendingReport(
+  baseUrl: string,
+  token: string,
+  year: number,
+  month: number
+): Promise<CategorySpendingRow[]> {
+  return apiRequest<CategorySpendingRow[]>(baseUrl, token, `/api/reports/spending?year=${year}&month=${month}`);
+}

@@ -22,6 +22,8 @@ const ITEMS: { route: keyof BudgetStackParamList; label: string; subtitle: strin
   { route: "Debts", label: "Debts", subtitle: "Balances, APR, and payoff targets", icon: "card", tone: "danger" },
   { route: "Rules", label: "Rule Sets", subtitle: "Percentage splits for Auto-Allocate", icon: "pie-chart", tone: "info" },
   { route: "Scheduled", label: "Scheduled", subtitle: "Due and upcoming recurring items", icon: "repeat", tone: "warning" },
+  { route: "Subscriptions", label: "Subscriptions", subtitle: "Recurring charges detected from history", icon: "radio", tone: "accent" },
+  { route: "SpendingReport", label: "Spending Breakdown", subtitle: "Category totals for any month", icon: "bar-chart", tone: "info" },
 ];
 
 export default function BudgetMenuScreen({ navigation }: Props) {
