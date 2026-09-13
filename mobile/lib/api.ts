@@ -238,3 +238,161 @@ export async function createExpense(
     body: JSON.stringify(input),
   });
 }
+
+// ---- Allocation (Phase 5) ----------------------------------------------
+
+// Mirrors GET /api/allocation's response shape (src/app/api/allocation/route.ts):
+// the flat (ungrouped) category list from listCategories, plus current
+// unallocated cash.
+export interface AllocationState {
+  unallocatedCash: string;
+  categories: Category[];
+}
+
+export async function fetchAllocationState(baseUrl: string, token: string): Promise<AllocationState> {
+  return apiRequest<AllocationState>(baseUrl, token, "/api/allocation");
+}
+
+// Mirrors src/lib/api/allocation.ts's SubmitAllocationInput.
+export interface SubmitAllocationItem {
+  categoryId: string;
+  amount: string;
+}
+
+export interface SubmitAllocationInput {
+  items: SubmitAllocationItem[];
+  date?: string;
+  notes?: string;
+}
+
+export async function submitAllocation(
+  baseUrl: string,
+  token: string,
+  input: SubmitAllocationInput
+): Promise<unknown> {
+  return apiRequest(baseUrl, token, "/api/allocation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// ---- Goals (Phase 5) ----------------------------------------------------
+
+// Mirrors src/lib/goals/queries.ts's GoalRow -- what GET /api/goals returns
+// (a list, joined against the linked category for name/allocated balance).
+export interface GoalListRow {
+  id: string;
+  name: string;
+  targetAmount: string;
+  targetDate: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  allocatedBalance: string | null;
+}
+
+export async function fetchGoals(baseUrl: string, token: string): Promise<GoalListRow[]> {
+  return apiRequest<GoalListRow[]>(baseUrl, token, "/api/goals");
+}
+
+// ---- Debts (Phase 5) -----------------------------------------------------
+
+// Mirrors src/lib/debts/queries.ts's DebtRow -- identical shape for both
+// GET /api/debts (list) and GET /api/debts/[id] (single), unlike Goals.
+export interface DebtRow {
+  id: string;
+  accountId: string;
+  accountName: string;
+  accountType: AccountType;
+  currentBalance: string;
+  startingBalance: string;
+  minimumPayment: string | null;
+  apr: string | null;
+  targetPayoffDate: string | null;
+  categoryId: string;
+  categoryName: string;
+  reservedBalance: string;
+}
+
+export async function fetchDebts(baseUrl: string, token: string): Promise<DebtRow[]> {
+  return apiRequest<DebtRow[]>(baseUrl, token, "/api/debts");
+}
+
+export async function fetchDebt(baseUrl: string, token: string, id: string): Promise<DebtRow> {
+  return apiRequest<DebtRow>(baseUrl, token, `/api/debts/${id}`);
+}
+
+// ---- Rule Sets (Phase 5) --------------------------------------------------
+
+// Mirrors src/lib/rules/queries.ts's RuleSetRowWithCategory -- what both
+// GET /api/rules (list, one entry per rule set) and GET /api/rules/[name]
+// (single) return; the list endpoint already returns every rule set's
+// full row list, so mobile never needs the single-rule-set fetch.
+export interface RuleSetRow {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  percentage: string;
+  sortOrder: number;
+}
+
+export interface RuleSet {
+  name: string;
+  rows: RuleSetRow[];
+}
+
+export async function fetchRuleSets(baseUrl: string, token: string): Promise<RuleSet[]> {
+  return apiRequest<RuleSet[]>(baseUrl, token, "/api/rules");
+}
+
+// ---- Scheduled (Phase 5) --------------------------------------------------
+
+// Mirrors src/lib/scheduled/queries.ts's raw scheduledTransactions row --
+// what GET /api/scheduled returns (no joined account/category names,
+// matching the web Scheduled page which doesn't show them either).
+export interface ScheduledTransactionRow {
+  id: string;
+  userId: string;
+  type: TransactionType;
+  accountId: string | null;
+  relatedAccountId: string | null;
+  categoryId: string | null;
+  relatedCategoryId: string | null;
+  amount: string;
+  description: string;
+  cadence: "weekly" | "biweekly" | "monthly" | "yearly" | "custom_days";
+  intervalDays: number | null;
+  nextDueDate: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ScheduledState {
+  due: ScheduledTransactionRow[];
+  upcoming: ScheduledTransactionRow[];
+}
+
+export async function fetchScheduled(baseUrl: string, token: string): Promise<ScheduledState> {
+  return apiRequest<ScheduledState>(baseUrl, token, "/api/scheduled");
+}
+
+export async function confirmScheduled(
+  baseUrl: string,
+  token: string,
+  id: string,
+  amount?: string
+): Promise<{ id: string; posted: true }> {
+  return apiRequest(baseUrl, token, `/api/scheduled/${id}/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(amount ? { amount } : {}),
+  });
+}
+
+export async function skipScheduled(
+  baseUrl: string,
+  token: string,
+  id: string
+): Promise<{ id: string; skipped: true; nextDueDate: string }> {
+  return apiRequest(baseUrl, token, `/api/scheduled/${id}/skip`, { method: "POST" });
+}

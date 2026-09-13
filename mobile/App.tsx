@@ -9,6 +9,7 @@ import DashboardScreen from "./screens/DashboardScreen";
 import { PlaceholderScreen } from "./screens/PlaceholderScreen";
 import { AccountsStackScreen } from "./navigation/AccountsStack";
 import { TransactionsStackScreen } from "./navigation/TransactionsStack";
+import { BudgetStackScreen } from "./navigation/BudgetStack";
 
 const Tab = createBottomTabNavigator();
 
@@ -56,6 +57,11 @@ export default function App() {
               name="Transactions"
               component={TransactionsStackScreen}
               options={{ tabBarIcon: ({ color, size }) => <Ionicons name="swap-horizontal" size={size} color={color} /> }}
+            />
+            <Tab.Screen
+              name="Budget"
+              component={BudgetStackScreen}
+              options={{ tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} /> }}
             />
             <Tab.Screen
               name="Settings"
