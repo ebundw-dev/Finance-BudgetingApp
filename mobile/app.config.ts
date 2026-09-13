@@ -62,11 +62,7 @@ const config: ExpoConfig = {
   ],
   extra: {
     eas: {
-      // Filled in automatically the first time you run `eas
-      // build:configure` (or `eas init`) after logging into your own
-      // Expo account -- see mobile/README.md. Left blank here since a
-      // project ID is tied to one specific Expo account/project.
-      projectId: undefined,
+      projectId: "61cd30e5-9cc8-45e2-b54d-eaaf7868586e"
     },
   },
 };

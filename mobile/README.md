@@ -1,22 +1,47 @@
-# Ledger Mobile — Phase 2 (infrastructure proving)
+# Ledger Mobile
 
-This is not a real app yet. It's one screen that proves the pipeline works:
-**Expo project → EAS Build → installed on a physical iPhone → calls the
-Phase 1 API → shows the response.** No navigation, no login screen, no
-styling beyond legibility.
+**Phase 2** proved the Expo → EAS Build → physical iPhone pipeline works
+(see the "Phase 2" section near the bottom for that walkthrough — still
+accurate, just not this phase's priority).
+
+**Phase 3** (current) builds the Dashboard tab for real: net financial
+position, cash, debt, fund/goal progress, and the due/upcoming-scheduled
+and new-subscription indicators, all pulled from `GET /api/dashboard` and
+styled to match the web app's dark palette. Every other tab (Accounts,
+Transactions, Settings) is still a "Coming soon" placeholder — only
+Dashboard has real content this phase.
+
+This phase is tested via **Expo Go**, not an EAS build (there's a known
+open bug in `eas-cli` right now, so EAS build/install is on hold — the
+Phase 2 walkthrough below still applies whenever that's revisited).
 
 Everything below this line is a checklist of things only you can do,
-since they require your own Expo and Apple accounts and your own phone.
+since they require your own Expo account, your own phone, and (for the
+EAS section) your own Apple Developer account.
+
+## Try it now (Phase 3 — Expo Go)
+
+1. Get an API token and a reachable dev-server URL — see steps 3 and 4
+   below (same setup as Phase 2).
+2. From `mobile/`:
+   ```
+   npx expo start
+   ```
+3. Install **Expo Go** from the App Store on your iPhone (free), then
+   scan the QR code the command prints.
+4. The app opens to the Dashboard tab. First launch, it'll ask for your
+   API Base URL and token — paste them in and tap **Connect**. After
+   that it remembers them (tap the gear icon top-right to change them
+   later).
+5. Pull down to refresh; tap **Retry** if a fetch fails.
 
 ## 1. Prerequisites
 
 - **Expo account** — free. Sign up at https://expo.dev/signup if you don't
-  have one.
-- **Apple Developer Program membership** — $99/year. Required for
-  installing a build on a physical iPhone by any method (ad-hoc or
-  TestFlight). Enroll at https://developer.apple.com/programs/ if you
-  haven't already. This can take a little while to process if you're
-  enrolling for the first time.
+  have one. Not needed at all just to use Expo Go (step-by-step above).
+- **Apple Developer Program membership** — $99/year. Only needed for the
+  Phase 2 EAS-build path (section 6 below), not for Expo Go. Enroll at
+  https://developer.apple.com/programs/ when you get to that phase.
 - Node.js already installed at the repo root (this project reuses it —
   see step 2).
 
@@ -32,7 +57,7 @@ This installs only `mobile/`'s own dependencies into `mobile/node_modules`
 
 ## 3. Get an API token
 
-The test screen needs a token issued by the Phase 1 API. Easiest path:
+The Dashboard tab needs a token issued by the Phase 1 API. Easiest path:
 run the web app locally (`npm run dev` from the repo root) and open
 **Settings** in the browser — there's a token-management UI there that
 issues one for you. Alternatively, call the endpoint directly:
@@ -72,24 +97,17 @@ resolves from the phone's network. Two options:
 
 Option A avoids all of the firewall/LAN/ATS complexity, so start there.
 
-## 5. (Optional, fast iteration) Expo Go
+## 5. Expo Go
 
-While you're only running the app on your own dev machine's Metro
-bundler — not the point of this phase, but useful if you want to eyeball
-the screen quickly before doing a real device build — you can install the
-free **Expo Go** app from the App Store and run:
+This is the "Try it now" section at the top of this file — `npx expo
+start`, scan the QR code with Expo Go. It's the primary way to test this
+phase's Dashboard tab.
 
-```
-npx expo start
-```
+## 6. Phase 2: build via EAS and install on your phone
 
-then scan the QR code. This is **not** the deliverable for Phase 2 (Expo
-Go doesn't prove the EAS Build pipeline works), just a shortcut for
-iterating on the screen itself if you want to.
-
-## 6. The real deliverable: build via EAS and install on your phone
-
-This is the part that actually proves the pipeline.
+Not this phase's priority (see the top of this file — on hold for the
+open `eas-cli` bug), but kept here since it's still how you'd get a real
+on-device build once that's resolved.
 
 1. Install the EAS CLI (or just use `npx eas-cli` each time below):
    ```
@@ -104,8 +122,15 @@ This is the part that actually proves the pipeline.
    eas build:configure
    ```
    This will ask which platforms — choose iOS — and will write your
-   Expo project ID into `app.config.ts` under `extra.eas.projectId`
-   (currently `undefined` as a placeholder).
+   Expo project ID into `app.config.ts` under `extra.eas.projectId`.
+   (This actually already happened automatically the first time `expo
+   start` ran on this machine while logged into `eas-cli` as
+   `ebundw-dev` — it silently created and linked
+   `@ebundw-dev/ledger-mobile`, a normal free-tier Expo project, no
+   billing implications. `app.config.ts` already has a real project ID
+   committed, not the `undefined` placeholder Phase 2 shipped with. This
+   step is a no-op if it's still the same account/project; re-run it if
+   you ever want to point at a different one.)
 4. Register your iPhone for ad-hoc distribution:
    ```
    eas device:create
@@ -133,9 +158,8 @@ This is the part that actually proves the pipeline.
    Management**, find your Apple ID/developer profile under "Developer
    App", and tap **Trust**. Then open the app normally.
 8. In the app: paste your API Base URL (from step 4) and API token (from
-   step 3) into the two fields, tap **Fetch Dashboard**, and confirm you
-   see a `HTTP 200` response with real JSON from your Ledger data. That's
-   the whole milestone.
+   step 3) when prompted, and confirm the Dashboard tab loads your real
+   Ledger data.
 
 ### Why ad-hoc/internal distribution instead of TestFlight
 
