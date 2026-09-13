@@ -563,6 +563,112 @@ export async function updateSplitExpense(
   return updated;
 }
 
+export interface UpdateExpenseParams {
+  transactionId: string;
+  categoryId: string;
+  amount: string;
+  date: string;
+  source?: string;
+  notes?: string;
+}
+
+// Same "reverse old, apply new, net into one delta per category" pattern
+// as updateSplitExpense just above, specialized to a single (non-split)
+// category. Account and type are immutable here too, same rationale:
+// this is a receipt correction (wrong category/amount/date), not a way
+// to move an expense to a different account.
+export async function updateExpense(
+  tx: Tx,
+  userId: string,
+  params: UpdateExpenseParams
+) {
+  assertPositiveAmount(params.amount);
+
+  const [txnRow] = await tx
+    .select()
+    .from(transactions)
+    .where(and(eq(transactions.id, params.transactionId), eq(transactions.userId, userId)))
+    .for("update");
+  if (!txnRow) {
+    throw new NotFoundError(`Transaction ${params.transactionId} not found.`);
+  }
+  if (txnRow.type !== "expense" || txnRow.categoryId === null || !txnRow.accountId) {
+    throw new ValidationError("Only a plain (non-split) expense can be edited this way.");
+  }
+
+  const account = await lockAccount(tx, userId, txnRow.accountId);
+  const isCreditCard = account.type === "credit_card";
+  const reserveCategoryId = await findReserveCategoryId(tx, userId, account);
+
+  const allCategoryIds = new Set([
+    txnRow.categoryId,
+    params.categoryId,
+    ...(reserveCategoryId ? [reserveCategoryId] : []),
+  ]);
+  const lockedCategories = await lockMany([...allCategoryIds], (id) => lockCategory(tx, userId, id));
+  const categoryById = new Map(lockedCategories.map((c) => [c.id, c]));
+
+  const balanceDelta = new Map<string, number>();
+  const addDelta = (id: string, delta: number) => {
+    balanceDelta.set(id, (balanceDelta.get(id) ?? 0) + delta);
+  };
+
+  // Reverse the old effect, then apply the new one -- net per category so
+  // an unchanged category (or the reserve category, which is touched by
+  // both the old and new effect every time) never sees an intermediate
+  // negative write even if it would net to a small or zero change.
+  addDelta(txnRow.categoryId, Number(txnRow.amount));
+  if (reserveCategoryId) addDelta(reserveCategoryId, -Number(txnRow.amount));
+  addDelta(params.categoryId, -Number(params.amount));
+  if (reserveCategoryId) addDelta(reserveCategoryId, Number(params.amount));
+
+  for (const [categoryId, delta] of balanceDelta.entries()) {
+    if (delta < 0) {
+      const category = categoryById.get(categoryId)!;
+      if (Number(category.allocatedBalance) + delta < -0.001) {
+        throw new InsufficientCategoryBalanceError(
+          `Category "${category.name}" has ${category.allocatedBalance} available, cannot apply a net change of ${delta.toFixed(2)}.`
+        );
+      }
+    }
+  }
+
+  for (const [categoryId, delta] of balanceDelta.entries()) {
+    if (delta === 0) continue;
+    await tx
+      .update(categories)
+      .set({ allocatedBalance: sql`${categories.allocatedBalance} + ${delta.toFixed(2)}` })
+      .where(eq(categories.id, categoryId));
+  }
+
+  const amountDelta = Number(params.amount) - Number(txnRow.amount);
+  if (amountDelta !== 0) {
+    await tx
+      .update(accounts)
+      .set({
+        currentBalance: isCreditCard
+          ? sql`${accounts.currentBalance} + ${amountDelta.toFixed(2)}`
+          : sql`${accounts.currentBalance} - ${amountDelta.toFixed(2)}`,
+      })
+      .where(eq(accounts.id, account.id));
+  }
+
+  const [updated] = await tx
+    .update(transactions)
+    .set({
+      categoryId: params.categoryId,
+      amount: params.amount,
+      relatedCategoryId: reserveCategoryId,
+      date: params.date,
+      source: params.source,
+      notes: params.notes,
+    })
+    .where(eq(transactions.id, txnRow.id))
+    .returning();
+
+  return updated;
+}
+
 export interface RecordDebtPaymentParams {
   fromAccountId: string;
   debtAccountId: string;
@@ -824,4 +930,208 @@ export async function recordBulkAllocation(
   }
 
   return created;
+}
+
+// Reverses whatever recordX function originally created this row --
+// mirror image of each one, dispatched by the row's own `type`. No
+// dedicated web UI calls this today (there is no delete-transaction
+// action anywhere in the codebase); it exists to back the mobile API's
+// DELETE /api/transactions/[id]. Every branch nets to a "give back what
+// this transaction took, take back what it gave" write, validated
+// against the same allocated_balance >= 0 rule as every other mutation
+// -- e.g. deleting an old category_reallocation or allocation can
+// legitimately fail with InsufficientCategoryBalanceError if the
+// category it credited has since been spent down below what reversing
+// this row would subtract.
+export async function deleteTransaction(tx: Tx, userId: string, transactionId: string) {
+  const [txnRow] = await tx
+    .select()
+    .from(transactions)
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
+    .for("update");
+  if (!txnRow) {
+    throw new NotFoundError(`Transaction ${transactionId} not found.`);
+  }
+
+  switch (txnRow.type) {
+    case "expense": {
+      if (!txnRow.accountId) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing its account.`);
+      }
+      const account = await lockAccount(tx, userId, txnRow.accountId);
+      const isCreditCard = account.type === "credit_card";
+      const reserveCategoryId = txnRow.relatedCategoryId ?? undefined;
+
+      if (txnRow.categoryId === null) {
+        // Split expense -- reverse every transaction_splits row the same
+        // way updateSplitExpense reverses "existing splits".
+        const splits = await tx
+          .select()
+          .from(transactionSplits)
+          .where(eq(transactionSplits.transactionId, txnRow.id));
+
+        const idsToLock = reserveCategoryId
+          ? [...splits.map((s) => s.categoryId), reserveCategoryId]
+          : splits.map((s) => s.categoryId);
+        const lockedCategories = await lockMany(idsToLock, (id) => lockCategory(tx, userId, id));
+        const categoryById = new Map(lockedCategories.map((c) => [c.id, c]));
+
+        const totalSplitAmount = splits.reduce((sum, s) => sum + Number(s.amount), 0);
+        if (reserveCategoryId) {
+          const reserveCategory = categoryById.get(reserveCategoryId)!;
+          if (Number(reserveCategory.allocatedBalance) - totalSplitAmount < -0.001) {
+            throw new InsufficientCategoryBalanceError(
+              `Category "${reserveCategory.name}" has ${reserveCategory.allocatedBalance} available, cannot remove ${totalSplitAmount.toFixed(2)} by deleting this transaction.`
+            );
+          }
+        }
+
+        for (const split of splits) {
+          await tx
+            .update(categories)
+            .set({ allocatedBalance: sql`${categories.allocatedBalance} + ${split.amount}` })
+            .where(eq(categories.id, split.categoryId));
+        }
+        if (reserveCategoryId) {
+          await tx
+            .update(categories)
+            .set({ allocatedBalance: sql`${categories.allocatedBalance} - ${totalSplitAmount.toFixed(2)}` })
+            .where(eq(categories.id, reserveCategoryId));
+        }
+
+        await tx.delete(transactionSplits).where(eq(transactionSplits.transactionId, txnRow.id));
+      } else {
+        // Plain expense.
+        const idsToLock = reserveCategoryId ? [txnRow.categoryId, reserveCategoryId] : [txnRow.categoryId];
+        const lockedCategories = await lockMany(idsToLock, (id) => lockCategory(tx, userId, id));
+        const categoryById = new Map(lockedCategories.map((c) => [c.id, c]));
+
+        if (reserveCategoryId) {
+          const reserveCategory = categoryById.get(reserveCategoryId)!;
+          if (Number(reserveCategory.allocatedBalance) - Number(txnRow.amount) < -0.001) {
+            throw new InsufficientCategoryBalanceError(
+              `Category "${reserveCategory.name}" has ${reserveCategory.allocatedBalance} available, cannot remove ${txnRow.amount} by deleting this transaction.`
+            );
+          }
+        }
+
+        await tx
+          .update(categories)
+          .set({ allocatedBalance: sql`${categories.allocatedBalance} + ${txnRow.amount}` })
+          .where(eq(categories.id, txnRow.categoryId));
+        if (reserveCategoryId) {
+          await tx
+            .update(categories)
+            .set({ allocatedBalance: sql`${categories.allocatedBalance} - ${txnRow.amount}` })
+            .where(eq(categories.id, reserveCategoryId));
+        }
+      }
+
+      await tx
+        .update(accounts)
+        .set({
+          currentBalance: isCreditCard
+            ? sql`${accounts.currentBalance} - ${txnRow.amount}`
+            : sql`${accounts.currentBalance} + ${txnRow.amount}`,
+        })
+        .where(eq(accounts.id, account.id));
+      break;
+    }
+
+    case "income": {
+      if (!txnRow.accountId) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing its account.`);
+      }
+      await lockAccount(tx, userId, txnRow.accountId);
+      await tx
+        .update(accounts)
+        .set({ currentBalance: sql`${accounts.currentBalance} - ${txnRow.amount}` })
+        .where(eq(accounts.id, txnRow.accountId));
+      break;
+    }
+
+    case "transfer": {
+      if (!txnRow.accountId || !txnRow.relatedAccountId) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing an account.`);
+      }
+      const [fromAccount, toAccount] = await lockTwo(txnRow.accountId, txnRow.relatedAccountId, (id) =>
+        lockAccount(tx, userId, id)
+      );
+      await tx
+        .update(accounts)
+        .set({ currentBalance: sql`${accounts.currentBalance} + ${txnRow.amount}` })
+        .where(eq(accounts.id, fromAccount.id));
+      await tx
+        .update(accounts)
+        .set({ currentBalance: sql`${accounts.currentBalance} - ${txnRow.amount}` })
+        .where(eq(accounts.id, toAccount.id));
+      break;
+    }
+
+    case "debt_payment": {
+      if (!txnRow.accountId || !txnRow.relatedAccountId || !txnRow.categoryId) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing an account or category.`);
+      }
+      const [fromAccount, debtAccount] = await lockTwo(txnRow.accountId, txnRow.relatedAccountId, (id) =>
+        lockAccount(tx, userId, id)
+      );
+      await lockCategory(tx, userId, txnRow.categoryId);
+      await tx
+        .update(categories)
+        .set({ allocatedBalance: sql`${categories.allocatedBalance} + ${txnRow.amount}` })
+        .where(eq(categories.id, txnRow.categoryId));
+      await tx
+        .update(accounts)
+        .set({ currentBalance: sql`${accounts.currentBalance} + ${txnRow.amount}` })
+        .where(eq(accounts.id, fromAccount.id));
+      await tx
+        .update(accounts)
+        .set({ currentBalance: sql`${accounts.currentBalance} + ${txnRow.amount}` })
+        .where(eq(accounts.id, debtAccount.id));
+      break;
+    }
+
+    case "category_reallocation": {
+      if (!txnRow.categoryId || !txnRow.relatedCategoryId) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing a category.`);
+      }
+      const [fromCategory, toCategory] = await lockTwo(txnRow.categoryId, txnRow.relatedCategoryId, (id) =>
+        lockCategory(tx, userId, id)
+      );
+      if (Number(toCategory.allocatedBalance) - Number(txnRow.amount) < -0.001) {
+        throw new InsufficientCategoryBalanceError(
+          `Category "${toCategory.name}" has ${toCategory.allocatedBalance} available, cannot remove ${txnRow.amount} by deleting this transaction.`
+        );
+      }
+      await tx
+        .update(categories)
+        .set({ allocatedBalance: sql`${categories.allocatedBalance} + ${txnRow.amount}` })
+        .where(eq(categories.id, fromCategory.id));
+      await tx
+        .update(categories)
+        .set({ allocatedBalance: sql`${categories.allocatedBalance} - ${txnRow.amount}` })
+        .where(eq(categories.id, toCategory.id));
+      break;
+    }
+
+    case "allocation": {
+      if (!txnRow.categoryId) {
+        throw new NotFoundError(`Transaction ${transactionId} is missing a category.`);
+      }
+      const category = await lockCategory(tx, userId, txnRow.categoryId);
+      if (Number(category.allocatedBalance) - Number(txnRow.amount) < -0.001) {
+        throw new InsufficientCategoryBalanceError(
+          `Category "${category.name}" has ${category.allocatedBalance} available, cannot remove ${txnRow.amount} by deleting this transaction.`
+        );
+      }
+      await tx
+        .update(categories)
+        .set({ allocatedBalance: sql`${categories.allocatedBalance} - ${txnRow.amount}` })
+        .where(eq(categories.id, category.id));
+      break;
+    }
+  }
+
+  await tx.delete(transactions).where(eq(transactions.id, txnRow.id));
+  return { id: txnRow.id, deleted: true };
 }
