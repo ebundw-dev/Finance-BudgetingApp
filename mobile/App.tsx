@@ -6,13 +6,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./lib/theme";
 import { ConnectionProvider } from "./lib/ConnectionContext";
 import { AppLockProvider } from "./lib/AppLockContext";
+import { NotificationsProvider } from "./lib/NotificationsContext";
+import { navigationRef, type RootTabParamList } from "./lib/navigationRef";
 import DashboardScreen from "./screens/DashboardScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import { AccountsStackScreen } from "./navigation/AccountsStack";
 import { TransactionsStackScreen } from "./navigation/TransactionsStack";
 import { BudgetStackScreen } from "./navigation/BudgetStack";
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 const navigationTheme: Theme = {
   ...DarkTheme,
@@ -32,42 +34,46 @@ export default function App() {
       <StatusBar style="light" />
       <AppLockProvider>
         <ConnectionProvider>
-          <NavigationContainer theme={navigationTheme}>
-            <Tab.Navigator
-              screenOptions={{
-                headerShown: false,
-                tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-                tabBarActiveTintColor: colors.accent,
-                tabBarInactiveTintColor: colors.textMuted,
-              }}
-            >
-              <Tab.Screen
-                name="Dashboard"
-                component={DashboardScreen}
-                options={{ tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }}
-              />
-              <Tab.Screen
-                name="Accounts"
-                component={AccountsStackScreen}
-                options={{ tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={size} color={color} /> }}
-              />
-              <Tab.Screen
-                name="Transactions"
-                component={TransactionsStackScreen}
-                options={{ tabBarIcon: ({ color, size }) => <Ionicons name="swap-horizontal" size={size} color={color} /> }}
-              />
-              <Tab.Screen
-                name="Budget"
-                component={BudgetStackScreen}
-                options={{ tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} /> }}
-              />
-              <Tab.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{ tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} /> }}
-              />
-            </Tab.Navigator>
-          </NavigationContainer>
+          <NotificationsProvider>
+            <NavigationContainer theme={navigationTheme} ref={navigationRef}>
+              <Tab.Navigator
+                screenOptions={{
+                  headerShown: false,
+                  tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+                  tabBarActiveTintColor: colors.accent,
+                  tabBarInactiveTintColor: colors.textMuted,
+                }}
+              >
+                <Tab.Screen
+                  name="Dashboard"
+                  component={DashboardScreen}
+                  options={{ tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }}
+                />
+                <Tab.Screen
+                  name="Accounts"
+                  component={AccountsStackScreen}
+                  options={{ tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={size} color={color} /> }}
+                />
+                <Tab.Screen
+                  name="Transactions"
+                  component={TransactionsStackScreen}
+                  options={{
+                    tabBarIcon: ({ color, size }) => <Ionicons name="swap-horizontal" size={size} color={color} />,
+                  }}
+                />
+                <Tab.Screen
+                  name="Budget"
+                  component={BudgetStackScreen}
+                  options={{ tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} /> }}
+                />
+                <Tab.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{ tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} /> }}
+                />
+              </Tab.Navigator>
+            </NavigationContainer>
+          </NotificationsProvider>
         </ConnectionProvider>
       </AppLockProvider>
     </SafeAreaProvider>

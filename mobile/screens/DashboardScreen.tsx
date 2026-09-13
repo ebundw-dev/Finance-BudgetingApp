@@ -12,11 +12,14 @@ import { colors } from "../lib/theme";
 import { currency } from "../lib/format";
 import { ApiError, fetchDashboard, type DashboardData } from "../lib/api";
 import { useConnection } from "../lib/ConnectionContext";
+import { useNotifications } from "../lib/NotificationsContext";
+import { notifyIfNewSubscriptionsDetected } from "../lib/notifications";
 
 type Phase = "loading" | "ready" | "error";
 
 export default function DashboardScreen() {
   const { connection, openConnectionForm } = useConnection();
+  const { enabled: notificationsEnabled } = useNotifications();
   const [phase, setPhase] = useState<Phase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
@@ -35,6 +38,9 @@ export default function DashboardScreen() {
         const result = await fetchDashboard(connection.baseUrl, connection.token);
         setData(result);
         setPhase("ready");
+        // Fire-and-forget: notifies only if newSubscriptionCount went up
+        // since the last check (see notifyIfNewSubscriptionsDetected).
+        notifyIfNewSubscriptionsDetected(result.newSubscriptionCount, notificationsEnabled).catch(() => {});
       } catch (err) {
         const message = err instanceof ApiError ? err.message : "Something went wrong.";
         if (isRefresh) {
@@ -47,7 +53,7 @@ export default function DashboardScreen() {
         if (isRefresh) setRefreshing(false);
       }
     },
-    [connection]
+    [connection, notificationsEnabled]
   );
 
   useEffect(() => {

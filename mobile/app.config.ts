@@ -63,6 +63,11 @@ const config: ExpoConfig = {
       },
     ],
     "expo-secure-store",
+    // Local notifications only (Phase 9) -- no push credentials, no
+    // custom icon/sound configured here. Needed so a future EAS/dev-client
+    // build gets the Android 13+ POST_NOTIFICATIONS manifest permission;
+    // Expo Go itself doesn't read this plugin config at all.
+    "expo-notifications",
   ],
   extra: {
     eas: {

@@ -6,6 +6,7 @@ import { ScreenHeader } from "../components/ScreenHeader";
 import { colors } from "../lib/theme";
 import { useConnection } from "../lib/ConnectionContext";
 import { useAppLock } from "../lib/AppLockContext";
+import { useNotifications } from "../lib/NotificationsContext";
 
 // Masks the middle of the token, showing just enough of each end that
 // the user can visually match it against the name they gave it in the
@@ -18,6 +19,7 @@ function maskToken(token: string): string {
 export default function SettingsScreen() {
   const { connection, disconnect } = useConnection();
   const { enabled: appLockEnabled, setEnabled: setAppLockEnabled } = useAppLock();
+  const { enabled: notificationsEnabled, setEnabled: setNotificationsEnabled } = useNotifications();
 
   function confirmDisconnect() {
     Alert.alert(
@@ -53,6 +55,26 @@ export default function SettingsScreen() {
             <Switch
               value={appLockEnabled}
               onValueChange={setAppLockEnabled}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={colors.surface}
+            />
+          </View>
+        </Card>
+
+        <Card style={styles.section}>
+          <Text style={styles.sectionHeading}>Notifications</Text>
+          <View style={styles.lockRow}>
+            <View style={styles.lockText}>
+              <Text style={styles.lockLabel}>Due dates &amp; new subscriptions</Text>
+              <Text style={styles.lockCaption}>
+                Local reminders only -- scheduled on this device from data already fetched, not a
+                server push. Covers scheduled transactions due within 24 hours and newly-detected
+                subscriptions.
+              </Text>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
               thumbColor={colors.surface}
             />

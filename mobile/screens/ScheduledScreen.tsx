@@ -9,11 +9,14 @@ import { ScheduledUpcomingRow } from "../components/ScheduledUpcomingRow";
 import { colors } from "../lib/theme";
 import { ApiError, fetchScheduled, type ScheduledTransactionRow } from "../lib/api";
 import { useConnection } from "../lib/ConnectionContext";
+import { useNotifications } from "../lib/NotificationsContext";
+import { syncScheduledNotifications } from "../lib/notifications";
 
 type Phase = "loading" | "ready" | "error";
 
 export default function ScheduledScreen() {
   const { connection, openConnectionForm } = useConnection();
+  const { enabled: notificationsEnabled } = useNotifications();
   const [phase, setPhase] = useState<Phase>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [due, setDue] = useState<ScheduledTransactionRow[]>([]);
@@ -29,6 +32,10 @@ export default function ScheduledScreen() {
         setDue(result.due);
         setUpcoming(result.upcoming);
         setPhase("ready");
+        // Fire-and-forget: schedules a local reminder for anything due
+        // within 24 hours that doesn't already have one pending. Never
+        // blocks the screen on notification scheduling.
+        syncScheduledNotifications([...result.due, ...result.upcoming], notificationsEnabled).catch(() => {});
       } catch (err) {
         setErrorMessage(err instanceof ApiError ? err.message : "Something went wrong.");
         setPhase("error");
@@ -36,7 +43,7 @@ export default function ScheduledScreen() {
         if (isRefresh) setRefreshing(false);
       }
     },
-    [connection]
+    [connection, notificationsEnabled]
   );
 
   useEffect(() => {
