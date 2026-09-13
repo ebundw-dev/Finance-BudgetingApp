@@ -4,6 +4,8 @@ import { and, eq, ilike, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { accounts, accountTypeEnum, categories, categoryGroups, debts, transactions } from "@/db/schema";
+import { AccountingError } from "@/lib/accounting/errors";
+import { recordReconciliation } from "@/lib/accounting/engine";
 import { verifySession } from "@/lib/auth/dal";
 
 const ACCOUNT_TYPES = new Set(accountTypeEnum.enumValues);
@@ -125,4 +127,37 @@ export async function deleteAccount(formData: FormData): Promise<void> {
   await db.delete(accounts).where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
 
   redirect("/accounts");
+}
+
+// Posts through recordReconciliation (src/lib/accounting/engine.ts) --
+// see that function's comment for why this only touches the account's
+// own balance (no category effect) and is scoped to cash accounts.
+export async function reconcileAccount(formData: FormData): Promise<void> {
+  const { userId } = await verifySession();
+  const accountId = String(formData.get("accountId") ?? "");
+  const statementBalance = String(formData.get("statementBalance") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim() || undefined;
+
+  if (!statementBalance || Number.isNaN(Number(statementBalance))) {
+    redirect(
+      `/accounts/${accountId}/reconcile?error=${encodeURIComponent("Enter the statement balance as a number.")}`
+    );
+  }
+
+  let message: string;
+  try {
+    const result = await db.transaction((tx) =>
+      recordReconciliation(tx, userId, { accountId, statementBalance, notes })
+    );
+    message = result.matched
+      ? "Already matches -- no adjustment needed."
+      : `Posted a ${Number(result.delta) > 0 ? "surplus" : "shortfall"} adjustment of ${Math.abs(Number(result.delta)).toFixed(2)}.`;
+  } catch (error) {
+    if (error instanceof AccountingError) {
+      redirect(`/accounts/${accountId}/reconcile?error=${encodeURIComponent(error.message)}`);
+    }
+    throw error;
+  }
+
+  redirect(`/accounts?success=${encodeURIComponent(message)}`);
 }

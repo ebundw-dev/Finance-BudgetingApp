@@ -137,3 +137,28 @@ export async function updateAccount(tx: Tx, userId: string, accountId: string, i
   if (!updated) throw new NotFoundError("Account not found.");
   return updated;
 }
+
+export interface ReconcileAccountInput {
+  statementBalance: string;
+  notes?: string;
+}
+
+// Mirrors src/lib/accounts/actions.ts's reconcileAccount Server Action's
+// FormData parsing (JSON body instead). The actual reconciliation logic
+// (recordReconciliation) lives in src/lib/accounting/engine.ts and is
+// called directly by both that action and this API's route -- same
+// pattern as every other recordX engine function (e.g. recordExpense),
+// not duplicated here since it's real money-moving business logic, not
+// plain CRUD.
+export function parseReconcileInput(body: unknown): ReconcileAccountInput {
+  if (!body || typeof body !== "object") {
+    throw new ValidationError("A JSON request body is required.");
+  }
+  const record = body as Record<string, unknown>;
+  const statementBalance = typeof record.statementBalance === "string" ? record.statementBalance.trim() : "";
+  if (!statementBalance || Number.isNaN(Number(statementBalance))) {
+    throw new ValidationError("statementBalance must be a number.");
+  }
+  const notes = typeof record.notes === "string" && record.notes.trim() ? record.notes.trim() : undefined;
+  return { statementBalance, notes };
+}

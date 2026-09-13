@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { categories, categoryGroups, debts } from "@/db/schema";
 import { NotFoundError, ValidationError } from "@/lib/accounting/errors";
 import { createTestUser, withRollback } from "@/lib/accounting/testing";
-import { createAccount, parseCreateAccountInput, parseUpdateAccountInput, updateAccount } from "./accounts";
+import { createAccount, parseCreateAccountInput, parseReconcileInput, parseUpdateAccountInput, updateAccount } from "./accounts";
 
 describe("parseCreateAccountInput", () => {
   it("rejects a missing name/type", () => {
@@ -144,5 +144,29 @@ describe("updateAccount", () => {
         updateAccount(tx, intruder.id, account.id, { name: "Hijacked", type: "checking", isCashAccount: true })
       ).rejects.toThrow(NotFoundError);
     });
+  });
+});
+
+describe("parseReconcileInput", () => {
+  it("parses a valid input", () => {
+    const input = parseReconcileInput({ statementBalance: "125.50", notes: "Found an ATM deposit." });
+    expect(input).toEqual({ statementBalance: "125.50", notes: "Found an ATM deposit." });
+  });
+
+  it("defaults notes to undefined when absent", () => {
+    const input = parseReconcileInput({ statementBalance: "0" });
+    expect(input.notes).toBeUndefined();
+  });
+
+  it("rejects a missing body", () => {
+    expect(() => parseReconcileInput(null)).toThrow(ValidationError);
+  });
+
+  it("rejects a non-numeric statement balance", () => {
+    expect(() => parseReconcileInput({ statementBalance: "abc" })).toThrow(ValidationError);
+  });
+
+  it("rejects a missing statement balance", () => {
+    expect(() => parseReconcileInput({})).toThrow(ValidationError);
   });
 });

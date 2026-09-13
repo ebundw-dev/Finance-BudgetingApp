@@ -14,7 +14,7 @@ import { deleteAccount } from "@/lib/accounts/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { buttonPrimary, currency, errorBanner } from "@/lib/ui";
+import { buttonPrimary, currency, errorBanner, link, successBanner } from "@/lib/ui";
 
 const TYPE_LABELS: Record<string, string> = {
   checking: "Checking",
@@ -46,10 +46,10 @@ const TYPE_BADGE: Record<string, string> = {
 export default async function AccountsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const { userId } = await verifySession();
-  const [accounts, { error }] = await Promise.all([listAccounts(userId), searchParams]);
+  const [accounts, { error, success }] = await Promise.all([listAccounts(userId), searchParams]);
 
   return (
     <div>
@@ -63,6 +63,11 @@ export default async function AccountsPage({
           Add account
         </Link>
       </div>
+      {success ? (
+        <p role="status" className={successBanner}>
+          {success}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className={errorBanner}>
           {error}
@@ -96,7 +101,7 @@ export default async function AccountsPage({
                   </div>
                 </div>
                 <h2 className="mb-3 font-medium text-text">{account.name}</h2>
-                <div className="flex items-baseline justify-between">
+                <div className="mb-3 flex items-baseline justify-between">
                   <span className="text-xs text-text-secondary">
                     {account.isCashAccount ? "Balance" : "Owed"}
                   </span>
@@ -108,6 +113,11 @@ export default async function AccountsPage({
                     {currency(account.currentBalance)}
                   </span>
                 </div>
+                {account.isCashAccount ? (
+                  <Link href={`/accounts/${account.id}/reconcile`} className={link}>
+                    Reconcile
+                  </Link>
+                ) : null}
               </Card>
             );
           })}
