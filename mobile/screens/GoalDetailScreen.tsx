@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<BudgetStackParamList, "GoalDetail">;
 // goals row, missing categoryName/allocatedBalance -- see
 // mobile/lib/api.ts's GoalListRow comment), so the list screen's row is
 // already strictly more complete than anything a detail fetch could add.
-export default function GoalDetailScreen({ route }: Props) {
+export default function GoalDetailScreen({ route, navigation }: Props) {
   const { goal } = route.params;
   const percent =
     goal.allocatedBalance !== null
@@ -33,6 +33,9 @@ export default function GoalDetailScreen({ route }: Props) {
             <Text style={styles.name}>{goal.name}</Text>
             <Text style={styles.categoryName}>{goal.categoryName ?? "No linked category"}</Text>
           </View>
+          <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate("EditGoal", { goal })}>
+            <Ionicons name="pencil" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {percent !== null ? (
@@ -92,6 +95,14 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   name: {
     color: colors.text,

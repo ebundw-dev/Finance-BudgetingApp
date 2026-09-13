@@ -334,6 +334,30 @@ export async function fetchGoals(baseUrl: string, token: string): Promise<GoalLi
   return apiRequest<GoalListRow[]>(baseUrl, token, "/api/goals");
 }
 
+// Mirrors src/lib/api/goals.ts's GoalInput.
+export interface GoalInput {
+  name: string;
+  targetAmount: string;
+  targetDate: string | null;
+  categoryId: string | null;
+}
+
+export async function createGoal(baseUrl: string, token: string, input: GoalInput): Promise<unknown> {
+  return apiRequest(baseUrl, token, "/api/goals", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateGoal(baseUrl: string, token: string, id: string, input: GoalInput): Promise<unknown> {
+  return apiRequest(baseUrl, token, `/api/goals/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 // ---- Debts (Phase 5) -----------------------------------------------------
 
 // Mirrors src/lib/debts/queries.ts's DebtRow -- identical shape for both
