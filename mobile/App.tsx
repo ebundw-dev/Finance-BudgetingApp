@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "./lib/theme";
 import { ConnectionProvider } from "./lib/ConnectionContext";
 import DashboardScreen from "./screens/DashboardScreen";
-import { PlaceholderScreen } from "./screens/PlaceholderScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 import { AccountsStackScreen } from "./navigation/AccountsStack";
 import { TransactionsStackScreen } from "./navigation/TransactionsStack";
 import { BudgetStackScreen } from "./navigation/BudgetStack";
@@ -24,10 +24,6 @@ const navigationTheme: Theme = {
     primary: colors.accent,
   },
 };
-
-function SettingsScreen() {
-  return <PlaceholderScreen title="Settings" icon="settings-outline" />;
-}
 
 export default function App() {
   return (

@@ -40,3 +40,11 @@ export async function saveConnection(connection: Connection): Promise<void> {
     SecureStore.setItemAsync(TOKEN_KEY, connection.token),
   ]);
 }
+
+// Used by the Settings screen's "Disconnect" action -- clears the stored
+// base URL/token locally. Doesn't call the API at all: it can't revoke
+// the token itself (only the web app's Settings page can), just forget
+// it on this device.
+export async function clearConnection(): Promise<void> {
+  await Promise.all([AsyncStorage.removeItem(BASE_URL_KEY), SecureStore.deleteItemAsync(TOKEN_KEY)]);
+}

@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LoadingView } from "../components/LoadingView";
 import { ConnectionForm } from "../components/ConnectionForm";
 import { colors } from "./theme";
-import { loadConnection, saveConnection, type Connection } from "./connection";
+import { clearConnection, loadConnection, saveConnection, type Connection } from "./connection";
 
 // Centralizes the "do we have a base URL + token yet" gate that used to
 // live only in the Phase 3 Dashboard screen. Now every tab needs it, so
@@ -16,6 +16,7 @@ import { loadConnection, saveConnection, type Connection } from "./connection";
 interface ConnectionContextValue {
   connection: Connection;
   openConnectionForm: () => void;
+  disconnect: () => Promise<void>;
 }
 
 const ConnectionContext = createContext<ConnectionContextValue | null>(null);
@@ -46,6 +47,12 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     setShowForm(false);
   }
 
+  async function disconnect() {
+    await clearConnection();
+    setConnection({ baseUrl: "", token: "" });
+    setShowForm(true);
+  }
+
   if (!loaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -70,7 +77,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ConnectionContext.Provider value={{ connection, openConnectionForm: () => setShowForm(true) }}>
+    <ConnectionContext.Provider value={{ connection, openConnectionForm: () => setShowForm(true), disconnect }}>
       {children}
     </ConnectionContext.Provider>
   );
