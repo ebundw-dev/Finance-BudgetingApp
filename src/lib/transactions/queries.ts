@@ -86,14 +86,23 @@ export async function listRecentTransactions(
   }));
 }
 
+export interface TransactionDetail extends TransactionRow {
+  categoryId: string | null;
+}
+
 // General single-transaction getter (any type, not just split expenses) --
 // for the API's GET /api/transactions/[id], which unlike the web edit flow
-// isn't scoped to one particular type.
-export async function getTransaction(userId: string, id: string): Promise<TransactionRow | null> {
+// isn't scoped to one particular type. Includes the raw categoryId (unlike
+// every other query in this file, which only returns denormalized names)
+// because PATCH /api/transactions/[id] needs it to preselect a plain
+// expense's category picker on mobile -- accountId isn't included since
+// the account is immutable on edit and never needs preselecting.
+export async function getTransaction(userId: string, id: string): Promise<TransactionDetail | null> {
   const [row] = await db
     .select({
       id: transactions.id,
       type: transactions.type,
+      categoryId: transactions.categoryId,
       amount: transactions.amount,
       date: transactions.date,
       source: transactions.source,

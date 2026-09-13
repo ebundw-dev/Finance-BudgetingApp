@@ -148,7 +148,9 @@ export default function TransactionsListScreen({ navigation }: Props) {
             </TouchableOpacity>
           ) : null
         }
-        renderItem={({ item }) => <TransactionRowItem transaction={item} />}
+        renderItem={({ item }) => (
+          <TransactionRowItem transaction={item} onPress={() => navigation.navigate("EditTransaction", { id: item.id })} />
+        )}
       />
 
       <TouchableOpacity

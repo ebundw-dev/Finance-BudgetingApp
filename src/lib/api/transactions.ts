@@ -5,6 +5,8 @@ import {
   recordIncome,
   recordSplitExpense,
   recordTransfer,
+  updateExpense,
+  updateSplitExpense,
   type SplitItem,
   type Tx,
 } from "@/lib/accounting/engine";
@@ -135,4 +137,93 @@ export async function createTransaction(tx: Tx, userId: string, input: CreateTra
       return txn;
     }
   }
+}
+
+export type UpdateTransactionInput =
+  | { kind: "expense"; categoryId: string; amount: string; date: string; source?: string; notes?: string }
+  | { kind: "split_expense"; splits: SplitItem[]; amount: string; date: string; source?: string; notes?: string };
+
+// Which engine function to call is inferred from the body's own shape
+// (a "splits" array means a split-expense edit, "categoryId" means a
+// plain one) rather than requiring the client to also resend "type" --
+// account/type are immutable on edit anyway, so there's nothing else
+// that would disambiguate it.
+export function parseUpdateTransactionInput(body: unknown): UpdateTransactionInput {
+  if (!body || typeof body !== "object") {
+    throw new ValidationError("A JSON request body is required.");
+  }
+  const record = body as Record<string, unknown>;
+  const amount = requireString(record, "amount");
+  const date = requireString(record, "date");
+
+  if (Array.isArray(record.splits)) {
+    const splits = record.splits;
+    if (splits.length < 2) {
+      throw new ValidationError("splits must be an array of at least two {categoryId, amount} items.");
+    }
+    const parsedSplits: SplitItem[] = splits.map((split, index) => {
+      if (!split || typeof split !== "object") {
+        throw new ValidationError(`splits[${index}] must be an object.`);
+      }
+      const splitRecord = split as Record<string, unknown>;
+      return {
+        categoryId: requireString(splitRecord, "categoryId"),
+        amount: requireString(splitRecord, "amount"),
+      };
+    });
+    return {
+      kind: "split_expense",
+      splits: parsedSplits,
+      amount,
+      date,
+      source: optionalString(record, "source"),
+      notes: optionalString(record, "notes"),
+    };
+  }
+
+  return {
+    kind: "expense",
+    categoryId: requireString(record, "categoryId"),
+    amount,
+    date,
+    source: optionalString(record, "source"),
+    notes: optionalString(record, "notes"),
+  };
+}
+
+// Mirrors updateSplitExpenseAction's payee handling exactly (see
+// src/lib/transactions/actions.ts): always resync payeeId -- to a
+// resolved payee, or back to null if the source field was cleared --
+// rather than only updating when present, since this is an edit.
+export async function updateTransaction(
+  tx: Tx,
+  userId: string,
+  transactionId: string,
+  input: UpdateTransactionInput
+) {
+  if (input.kind === "expense") {
+    const txn = await updateExpense(tx, userId, {
+      transactionId,
+      categoryId: input.categoryId,
+      amount: input.amount,
+      date: input.date,
+      source: input.source,
+      notes: input.notes,
+    });
+    const payeeId = input.source ? await recordPayeeUsage(tx, userId, input.source, input.categoryId) : null;
+    await tx.update(transactions).set({ payeeId }).where(eq(transactions.id, txn.id));
+    return { ...txn, payeeId };
+  }
+
+  const txn = await updateSplitExpense(tx, userId, {
+    transactionId,
+    splits: input.splits,
+    amount: input.amount,
+    date: input.date,
+    source: input.source,
+    notes: input.notes,
+  });
+  const payeeId = input.source ? await recordPayeeUsage(tx, userId, input.source, null) : null;
+  await tx.update(transactions).set({ payeeId }).where(eq(transactions.id, txn.id));
+  return { ...txn, payeeId };
 }

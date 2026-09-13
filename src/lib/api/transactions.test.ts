@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createTestAccount, createTestCategory, createTestUser, withRollback } from "@/lib/accounting/testing";
 import { ValidationError } from "@/lib/accounting/errors";
-import { createTransaction, parseCreateTransactionInput } from "./transactions";
+import {
+  createTransaction,
+  parseCreateTransactionInput,
+  parseUpdateTransactionInput,
+  updateTransaction,
+} from "./transactions";
 
 describe("parseCreateTransactionInput", () => {
   it("parses a valid expense", () => {
@@ -180,6 +185,125 @@ describe("createTransaction", () => {
           date: "2026-09-12",
         })
       ).rejects.toThrow();
+    });
+  });
+});
+
+describe("parseUpdateTransactionInput", () => {
+  it("parses a plain expense edit (categoryId, no splits)", () => {
+    const input = parseUpdateTransactionInput({
+      categoryId: "c1",
+      amount: "12.34",
+      date: "2026-09-12",
+      source: "Coffee Shop",
+    });
+    expect(input).toEqual({
+      kind: "expense",
+      categoryId: "c1",
+      amount: "12.34",
+      date: "2026-09-12",
+      source: "Coffee Shop",
+      notes: undefined,
+    });
+  });
+
+  it("parses a split expense edit (splits array present)", () => {
+    const input = parseUpdateTransactionInput({
+      amount: "30",
+      date: "2026-09-12",
+      splits: [
+        { categoryId: "c1", amount: "20" },
+        { categoryId: "c2", amount: "10" },
+      ],
+    });
+    expect(input).toMatchObject({
+      kind: "split_expense",
+      splits: [
+        { categoryId: "c1", amount: "20" },
+        { categoryId: "c2", amount: "10" },
+      ],
+    });
+  });
+
+  it("rejects a missing body", () => {
+    expect(() => parseUpdateTransactionInput(null)).toThrow(ValidationError);
+  });
+
+  it("rejects a plain expense edit missing categoryId", () => {
+    expect(() => parseUpdateTransactionInput({ amount: "1", date: "2026-09-12" })).toThrow(ValidationError);
+  });
+
+  it("rejects a split edit with fewer than two splits", () => {
+    expect(() =>
+      parseUpdateTransactionInput({
+        amount: "10",
+        date: "2026-09-12",
+        splits: [{ categoryId: "c1", amount: "10" }],
+      })
+    ).toThrow(ValidationError);
+  });
+});
+
+describe("updateTransaction", () => {
+  it("edits a plain expense's category via updateExpense and resyncs the payee", async () => {
+    await withRollback(async (tx) => {
+      const user = await createTestUser(tx);
+      const account = await createTestAccount(tx, user.id, { currentBalance: "100" });
+      const category1 = await createTestCategory(tx, user.id, { name: "Food", allocatedBalance: "50" });
+      const category2 = await createTestCategory(tx, user.id, { name: "Gas", allocatedBalance: "50" });
+
+      const created = await createTransaction(tx, user.id, {
+        type: "expense",
+        accountId: account.id,
+        categoryId: category1.id,
+        amount: "20",
+        date: "2026-09-12",
+        source: "Costco",
+      });
+
+      const updated = await updateTransaction(tx, user.id, created.id, {
+        kind: "expense",
+        categoryId: category2.id,
+        amount: "25",
+        date: "2026-09-13",
+      });
+
+      expect(updated.categoryId).toBe(category2.id);
+      expect(updated.amount).toBe("25.00");
+      expect(updated.payeeId).toBeNull();
+    });
+  });
+
+  it("edits a split expense via updateSplitExpense", async () => {
+    await withRollback(async (tx) => {
+      const user = await createTestUser(tx);
+      const account = await createTestAccount(tx, user.id, { currentBalance: "100" });
+      const category1 = await createTestCategory(tx, user.id, { name: "Food", allocatedBalance: "50" });
+      const category2 = await createTestCategory(tx, user.id, { name: "Gas", allocatedBalance: "50" });
+
+      const created = await createTransaction(tx, user.id, {
+        type: "split_expense",
+        accountId: account.id,
+        amount: "30",
+        date: "2026-09-12",
+        splits: [
+          { categoryId: category1.id, amount: "20" },
+          { categoryId: category2.id, amount: "10" },
+        ],
+      });
+
+      const updated = await updateTransaction(tx, user.id, created.id, {
+        kind: "split_expense",
+        splits: [
+          { categoryId: category1.id, amount: "15" },
+          { categoryId: category2.id, amount: "15" },
+        ],
+        amount: "30",
+        date: "2026-09-12",
+      });
+
+      expect(updated.amount).toBe("30.00");
+      expect(updated.categoryId).toBeNull();
     });
   });
 });

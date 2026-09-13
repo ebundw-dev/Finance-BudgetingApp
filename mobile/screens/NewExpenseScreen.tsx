@@ -5,6 +5,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,10 +16,12 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SelectModal, type SelectSection } from "../components/SelectModal";
 import { colors } from "../lib/theme";
+import { currency } from "../lib/format";
 import { todayString } from "../lib/dates";
 import {
   ApiError,
   createExpense,
+  createSplitExpense,
   fetchAccounts,
   fetchCategories,
   type Account,
@@ -28,6 +31,19 @@ import { useConnection } from "../lib/ConnectionContext";
 import type { TransactionsStackParamList } from "../navigation/TransactionsStack";
 
 type Props = NativeStackScreenProps<TransactionsStackParamList, "NewExpense">;
+
+interface SplitRow {
+  key: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  amount: string;
+}
+
+let nextSplitRowKey = 0;
+function emptySplitRow(): SplitRow {
+  nextSplitRowKey += 1;
+  return { key: `split-${nextSplitRowKey}`, categoryId: null, categoryName: null, amount: "" };
+}
 
 export default function NewExpenseScreen({ navigation }: Props) {
   const { connection } = useConnection();
@@ -42,6 +58,10 @@ export default function NewExpenseScreen({ navigation }: Props) {
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
   const [date, setDate] = useState(todayString());
+
+  const [isSplit, setIsSplit] = useState(false);
+  const [splits, setSplits] = useState<SplitRow[]>(() => [emptySplitRow(), emptySplitRow()]);
+  const [splitPickerKey, setSplitPickerKey] = useState<string | null>(null);
 
   const [showAccountPicker, setShowAccountPicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -93,30 +113,60 @@ export default function NewExpenseScreen({ navigation }: Props) {
   const selectedCategory = categoryGroups
     .flatMap((g) => g.categories)
     .find((c) => c.id === categoryId);
+  const allCategories = useMemo(() => categoryGroups.flatMap((g) => g.categories), [categoryGroups]);
+
+  function updateSplitRow(key: string, patch: Partial<SplitRow>) {
+    setSplits((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  }
+  function addSplitRow() {
+    setSplits((prev) => [...prev, emptySplitRow()]);
+  }
+  function removeSplitRow(key: string) {
+    setSplits((prev) => (prev.length <= 2 ? prev : prev.filter((row) => row.key !== key)));
+  }
+
+  const splitTotal = splits.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  const remaining = (Number(amount) || 0) - splitTotal;
+  const splitIsBalanced = Math.abs(remaining) < 0.001 && Number(amount) > 0;
 
   const amountValue = Number(amount);
+  const amountIsValid = amount.trim().length > 0 && Number.isFinite(amountValue) && amountValue > 0;
   const canSubmit =
     !!accountId &&
-    !!categoryId &&
-    amount.trim().length > 0 &&
-    Number.isFinite(amountValue) &&
-    amountValue > 0 &&
+    amountIsValid &&
     date.trim().length > 0 &&
-    !submitting;
+    !submitting &&
+    (isSplit
+      ? splitIsBalanced && splits.every((row) => row.categoryId && Number(row.amount) > 0)
+      : !!categoryId);
 
   async function handleSubmit() {
-    if (!accountId || !categoryId) return;
+    if (!accountId) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await createExpense(connection.baseUrl, connection.token, {
-        type: "expense",
-        accountId,
-        categoryId,
-        amount: amount.trim(),
-        date,
-        source: source.trim() || undefined,
-      });
+      if (isSplit) {
+        await createSplitExpense(connection.baseUrl, connection.token, {
+          type: "split_expense",
+          accountId,
+          splits: splits
+            .filter((row) => row.categoryId && Number(row.amount) > 0)
+            .map((row) => ({ categoryId: row.categoryId!, amount: row.amount.trim() })),
+          amount: amount.trim(),
+          date,
+          source: source.trim() || undefined,
+        });
+      } else {
+        if (!categoryId) return;
+        await createExpense(connection.baseUrl, connection.token, {
+          type: "expense",
+          accountId,
+          categoryId,
+          amount: amount.trim(),
+          date,
+          source: source.trim() || undefined,
+        });
+      }
       navigation.goBack();
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -150,13 +200,29 @@ export default function NewExpenseScreen({ navigation }: Props) {
                 <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </TouchableOpacity>
 
-              <Text style={styles.label}>Category</Text>
-              <TouchableOpacity style={styles.pickerButton} onPress={() => setShowCategoryPicker(true)}>
-                <Text style={selectedCategory ? styles.pickerValue : styles.pickerPlaceholder}>
-                  {selectedCategory ? selectedCategory.name : "Choose a category"}
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
+              {allCategories.length >= 2 ? (
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>Split into multiple categories</Text>
+                  <Switch
+                    value={isSplit}
+                    onValueChange={setIsSplit}
+                    trackColor={{ false: colors.border, true: colors.accent }}
+                    thumbColor={colors.surface}
+                  />
+                </View>
+              ) : null}
+
+              {!isSplit ? (
+                <>
+                  <Text style={styles.label}>Category</Text>
+                  <TouchableOpacity style={styles.pickerButton} onPress={() => setShowCategoryPicker(true)}>
+                    <Text style={selectedCategory ? styles.pickerValue : styles.pickerPlaceholder}>
+                      {selectedCategory ? selectedCategory.name : "Choose a category"}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </>
+              ) : null}
 
               <Text style={styles.label}>Amount</Text>
               <TextInput
@@ -167,6 +233,55 @@ export default function NewExpenseScreen({ navigation }: Props) {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
               />
+
+              {isSplit ? (
+                <View style={styles.splitBlock}>
+                  <View style={[styles.remainingBanner, splitIsBalanced && styles.remainingBannerBalanced]}>
+                    <Text style={[styles.remainingLabel, splitIsBalanced && styles.remainingLabelBalanced]}>
+                      Remaining to assign
+                    </Text>
+                    <Text style={[styles.remainingValue, splitIsBalanced && styles.remainingLabelBalanced]}>
+                      {currency(remaining.toFixed(2))}
+                    </Text>
+                  </View>
+
+                  {splits.map((row) => (
+                    <View key={row.key} style={styles.splitRow}>
+                      <TouchableOpacity
+                        style={styles.splitCategoryButton}
+                        onPress={() => setSplitPickerKey(row.key)}
+                      >
+                        <Text
+                          style={row.categoryName ? styles.pickerValue : styles.pickerPlaceholder}
+                          numberOfLines={1}
+                        >
+                          {row.categoryName ?? "Choose category"}
+                        </Text>
+                      </TouchableOpacity>
+                      <TextInput
+                        style={styles.splitAmountInput}
+                        value={row.amount}
+                        onChangeText={(text) => updateSplitRow(row.key, { amount: text })}
+                        placeholder="0.00"
+                        placeholderTextColor={colors.textMuted}
+                        keyboardType="decimal-pad"
+                      />
+                      <TouchableOpacity
+                        style={[styles.removeSplitButton, splits.length <= 2 && styles.removeSplitButtonDisabled]}
+                        onPress={() => removeSplitRow(row.key)}
+                        disabled={splits.length <= 2}
+                      >
+                        <Ionicons name="close" size={16} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  <TouchableOpacity style={styles.addSplitButton} onPress={addSplitRow}>
+                    <Ionicons name="add" size={16} color={colors.accent} />
+                    <Text style={styles.addSplitText}>Add category</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
 
               <Text style={styles.label}>Payee / description (optional)</Text>
               <TextInput
@@ -198,7 +313,7 @@ export default function NewExpenseScreen({ navigation }: Props) {
                 {submitting ? (
                   <ActivityIndicator size="small" color={colors.onAccent} />
                 ) : (
-                  <Text style={styles.submitButtonText}>Add Expense</Text>
+                  <Text style={styles.submitButtonText}>{isSplit ? "Add Split Expense" : "Add Expense"}</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -221,6 +336,18 @@ export default function NewExpenseScreen({ navigation }: Props) {
         selectedValue={categoryId}
         onSelect={setCategoryId}
         onClose={() => setShowCategoryPicker(false)}
+      />
+      <SelectModal
+        visible={splitPickerKey !== null}
+        title="Choose a category"
+        sections={categorySections}
+        selectedValue={splits.find((row) => row.key === splitPickerKey)?.categoryId ?? null}
+        onSelect={(value) => {
+          if (!splitPickerKey) return;
+          const name = allCategories.find((c) => c.id === value)?.name ?? null;
+          updateSplitRow(splitPickerKey, { categoryId: value, categoryName: name });
+        }}
+        onClose={() => setSplitPickerKey(null)}
       />
     </SafeAreaView>
   );
@@ -293,5 +420,91 @@ const styles = StyleSheet.create({
     color: colors.onAccent,
     fontWeight: "700",
     fontSize: 15,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 18,
+  },
+  switchLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  splitBlock: {
+    marginTop: 12,
+  },
+  remainingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: `${colors.danger}66`,
+    backgroundColor: `${colors.danger}1a`,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  remainingBannerBalanced: {
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  remainingLabel: {
+    color: colors.danger,
+    fontSize: 13,
+  },
+  remainingLabelBalanced: {
+    color: colors.text,
+  },
+  remainingValue: {
+    color: colors.danger,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  splitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  splitCategoryButton: {
+    flex: 1,
+    backgroundColor: colors.surfaceHover,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  splitAmountInput: {
+    width: 84,
+    backgroundColor: colors.surfaceHover,
+    color: colors.text,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    fontSize: 14,
+    textAlign: "right",
+  },
+  removeSplitButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeSplitButtonDisabled: {
+    opacity: 0.3,
+  },
+  addSplitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  addSplitText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

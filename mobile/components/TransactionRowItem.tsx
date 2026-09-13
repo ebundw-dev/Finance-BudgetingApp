@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Card } from "./Card";
 import { colors, toneText } from "../lib/theme";
 import { currency } from "../lib/format";
@@ -9,29 +9,33 @@ import type { TransactionRow } from "../lib/api";
 // date, payee-or-category, amount, and a Split indicator if the
 // transaction has splits. Web only tones the type pill, not the amount --
 // this phase's own requirement extends that tone to the amount itself.
-export function TransactionRowItem({ transaction }: { transaction: TransactionRow }) {
+// Tappable (onPress) to reach EditTransactionScreen -- editable there for a
+// plain expense, read-only-plus-delete for every other type.
+export function TransactionRowItem({ transaction, onPress }: { transaction: TransactionRow; onPress: () => void }) {
   const tone = TRANSACTION_TYPE_TONE[transaction.type];
   const label = transaction.source ?? transaction.categoryName ?? "—";
 
   return (
-    <Card style={styles.card}>
-      <View style={styles.row}>
-        <View style={styles.left}>
-          <Text style={styles.date}>{transaction.date}</Text>
-          <View style={styles.labelRow}>
-            <Text style={styles.label} numberOfLines={1}>
-              {label}
-            </Text>
-            {transaction.splits.length > 0 ? (
-              <View style={styles.splitBadge}>
-                <Text style={styles.splitBadgeText}>Split</Text>
-              </View>
-            ) : null}
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Card style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.left}>
+            <Text style={styles.date}>{transaction.date}</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label} numberOfLines={1}>
+                {label}
+              </Text>
+              {transaction.splits.length > 0 ? (
+                <View style={styles.splitBadge}>
+                  <Text style={styles.splitBadgeText}>Split</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
+          <Text style={[styles.amount, { color: toneText[tone] }]}>{currency(transaction.amount)}</Text>
         </View>
-        <Text style={[styles.amount, { color: toneText[tone] }]}>{currency(transaction.amount)}</Text>
-      </View>
-    </Card>
+      </Card>
+    </TouchableOpacity>
   );
 }
 

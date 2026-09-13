@@ -324,6 +324,81 @@ export async function createExpense(
   });
 }
 
+// Mirrors src/lib/api/transactions.ts's CreateTransactionInput, "split_expense"
+// variant -- what NewExpenseScreen's "Split into multiple categories"
+// toggle posts, same as web's ExpenseForm switching to splitExpenseAction.
+export interface CreateSplitExpenseInput {
+  type: "split_expense";
+  accountId: string;
+  splits: { categoryId: string; amount: string }[];
+  amount: string;
+  date: string;
+  source?: string;
+  notes?: string;
+}
+
+export async function createSplitExpense(
+  baseUrl: string,
+  token: string,
+  input: CreateSplitExpenseInput
+): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>(baseUrl, token, "/api/transactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// Mirrors src/lib/transactions/queries.ts's TransactionDetail -- what GET
+// /api/transactions/[id] returns, unlike the list rows above this
+// includes the raw categoryId (needed to preselect a plain expense's
+// category picker on edit).
+export interface TransactionDetail extends TransactionRow {
+  categoryId: string | null;
+}
+
+export async function fetchTransaction(baseUrl: string, token: string, id: string): Promise<TransactionDetail> {
+  return apiRequest<TransactionDetail>(baseUrl, token, `/api/transactions/${id}`);
+}
+
+// Mirrors src/lib/api/transactions.ts's UpdateTransactionInput, "expense"
+// kind only -- editing a split expense isn't exposed on mobile yet, only
+// plain-expense edit (EditTransactionScreen) and delete (any type, below).
+export interface UpdateExpenseInput {
+  categoryId: string;
+  amount: string;
+  date: string;
+  source?: string;
+  notes?: string;
+}
+
+export async function updateTransaction(
+  baseUrl: string,
+  token: string,
+  id: string,
+  input: UpdateExpenseInput
+): Promise<TransactionDetail> {
+  return apiRequest<TransactionDetail>(baseUrl, token, `/api/transactions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+// Reverses and removes any transaction type via the engine's
+// deleteTransaction (see src/lib/accounting/engine.ts) -- no web
+// equivalent to mirror, this is the first delete capability anywhere in
+// the app.
+export async function deleteTransaction(
+  baseUrl: string,
+  token: string,
+  id: string
+): Promise<{ id: string; deleted: boolean }> {
+  return apiRequest<{ id: string; deleted: boolean }>(baseUrl, token, `/api/transactions/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ---- Allocation (Phase 5) ----------------------------------------------
 
 // Mirrors GET /api/allocation's response shape (src/app/api/allocation/route.ts):
