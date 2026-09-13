@@ -81,6 +81,10 @@ export default function DebtsListScreen({ navigation }: Props) {
         ListHeaderComponent={
           <View style={styles.header}>
             <ScreenHeader eyebrow="Make it smaller" title="Debts" />
+            <TouchableOpacity style={styles.plannerButton} onPress={() => navigation.navigate("DebtPlanner")}>
+              <Ionicons name="trending-down" size={15} color={colors.accent} />
+              <Text style={styles.plannerButtonText}>Payoff Planner</Text>
+            </TouchableOpacity>
           </View>
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -112,6 +116,25 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 14,
+    gap: 12,
+  },
+  plannerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  plannerButtonText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "600",
   },
   separator: {
     height: 12,

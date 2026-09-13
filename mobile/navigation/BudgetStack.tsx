@@ -11,6 +11,7 @@ import EditGoalScreen from "../screens/EditGoalScreen";
 import DebtsListScreen from "../screens/DebtsListScreen";
 import DebtDetailScreen from "../screens/DebtDetailScreen";
 import EditDebtScreen from "../screens/EditDebtScreen";
+import DebtPlannerScreen from "../screens/DebtPlannerScreen";
 import NewAccountScreen from "../screens/NewAccountScreen";
 import RuleSetsListScreen from "../screens/RuleSetsListScreen";
 import RuleSetDetailScreen from "../screens/RuleSetDetailScreen";
@@ -35,6 +36,7 @@ export type BudgetStackParamList = {
   Debts: undefined;
   DebtDetail: { id: string; name: string };
   EditDebt: { debt: DebtRow };
+  DebtPlanner: undefined;
   NewAccount: { initialIsDebt?: boolean } | undefined;
   Rules: undefined;
   RuleDetail: { ruleSet: RuleSet };
@@ -84,6 +86,7 @@ export function BudgetStackScreen() {
         options={({ route }) => ({ title: route.params.name })}
       />
       <Stack.Screen name="EditDebt" component={EditDebtScreen} options={{ title: "Edit Debt" }} />
+      <Stack.Screen name="DebtPlanner" component={DebtPlannerScreen} options={{ title: "Payoff Planner" }} />
       <Stack.Screen
         name="NewAccount"
         component={NewAccountScreen}
