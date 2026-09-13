@@ -59,6 +59,7 @@ const config: ExpoConfig = {
         backgroundColor: DARK_BASE,
       },
     ],
+    "expo-secure-store",
   ],
   extra: {
     eas: {
