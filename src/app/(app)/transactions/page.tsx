@@ -275,11 +275,16 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                     <td className={`${td} tabular-nums`}>{currency(row.amount)}</td>
                     <td className={`${td} text-text-secondary`}>{row.source ?? row.notes ?? ""}</td>
                     <td className={td}>
-                      {row.splits.length > 0 ? (
-                        <Link href={`/transactions/${row.id}/edit`} className={link}>
-                          Edit
+                      <div className="flex gap-3">
+                        {row.splits.length > 0 ? (
+                          <Link href={`/transactions/${row.id}/edit`} className={link}>
+                            Edit
+                          </Link>
+                        ) : null}
+                        <Link href={`/transactions/${row.id}/history`} className={link}>
+                          History
                         </Link>
-                      ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

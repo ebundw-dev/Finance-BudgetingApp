@@ -2,7 +2,7 @@ import "server-only";
 import { and, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
-import { accounts, categories, transactionSplits, transactions } from "@/db/schema";
+import { accounts, categories, transactionHistory, transactionSplits, transactions } from "@/db/schema";
 import { normalizePayee } from "@/lib/subscriptions/detect";
 
 const relatedAccounts = alias(accounts, "related_accounts");
@@ -136,6 +136,36 @@ export async function getTransaction(userId: string, id: string): Promise<Transa
   }
 
   return { ...row, splits };
+}
+
+export interface TransactionHistoryRow {
+  id: string;
+  action: "updated" | "deleted";
+  oldValues: unknown;
+  newValues: unknown;
+  changedAt: string;
+}
+
+// Reads transaction_history directly by (userId, transactionId) --
+// deliberately not joined to the transactions table (transaction_id is
+// not a foreign key; see that table's schema comment), so this also
+// works for a since-deleted transaction's history, even though the only
+// UI path to it today is a still-existing transaction's detail screen.
+// Most recent first, per this phase's own requirement.
+export async function getTransactionHistory(userId: string, transactionId: string): Promise<TransactionHistoryRow[]> {
+  const rows = await db
+    .select({
+      id: transactionHistory.id,
+      action: transactionHistory.action,
+      oldValues: transactionHistory.oldValues,
+      newValues: transactionHistory.newValues,
+      changedAt: transactionHistory.changedAt,
+    })
+    .from(transactionHistory)
+    .where(and(eq(transactionHistory.userId, userId), eq(transactionHistory.transactionId, transactionId)))
+    .orderBy(desc(transactionHistory.changedAt));
+
+  return rows.map((row) => ({ ...row, changedAt: row.changedAt.toISOString() }));
 }
 
 export interface ListTransactionsOptions {
