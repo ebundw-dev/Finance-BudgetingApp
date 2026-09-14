@@ -178,7 +178,13 @@ export default function EditTransactionScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <TransactionTypeBadge type={txn.type} />
+          <View style={styles.topRow}>
+            <TransactionTypeBadge type={txn.type} />
+            <TouchableOpacity style={styles.historyButton} onPress={() => navigation.navigate("TransactionHistory", { id })}>
+              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+              <Text style={styles.historyButtonText}>History</Text>
+            </TouchableOpacity>
+          </View>
 
           {isPlainExpense ? (
             <>
@@ -383,6 +389,26 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: colors.danger,
     fontSize: 14,
+    fontWeight: "600",
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  historyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  historyButtonText: {
+    color: colors.textSecondary,
+    fontSize: 12,
     fontWeight: "600",
   },
 });

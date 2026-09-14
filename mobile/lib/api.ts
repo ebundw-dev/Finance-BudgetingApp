@@ -439,6 +439,28 @@ export async function deleteTransaction(
   });
 }
 
+// Mirrors src/lib/transactions/queries.ts's TransactionHistoryRow -- what
+// GET /api/transactions/[id]/history returns, most recent first.
+// oldValues/newValues are full row snapshots (plus splits, for a split
+// expense) written automatically by updateExpense/updateSplitExpense/
+// deleteTransaction (Phase 12) -- loosely typed here since the exact
+// shape depends on the transaction's own type.
+export interface TransactionHistoryRow {
+  id: string;
+  action: "updated" | "deleted";
+  oldValues: Record<string, unknown>;
+  newValues: Record<string, unknown> | null;
+  changedAt: string;
+}
+
+export async function fetchTransactionHistory(
+  baseUrl: string,
+  token: string,
+  id: string
+): Promise<TransactionHistoryRow[]> {
+  return apiRequest<TransactionHistoryRow[]>(baseUrl, token, `/api/transactions/${id}/history`);
+}
+
 // ---- Allocation (Phase 5) ----------------------------------------------
 
 // Mirrors GET /api/allocation's response shape (src/app/api/allocation/route.ts):
