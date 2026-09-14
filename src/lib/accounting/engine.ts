@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { NeonDatabase } from "drizzle-orm/neon-serverless";
 import * as schema from "@/db/schema";
-import { accounts, categories, debts, transactions, transactionSplits } from "@/db/schema";
+import { accounts, categories, debts, transactionHistory, transactions, transactionSplits } from "@/db/schema";
 import {
   InsufficientCategoryBalanceError,
   InsufficientUnallocatedCashError,
@@ -45,6 +45,44 @@ async function lockCategory(tx: Tx, userId: string, categoryId: string) {
     throw new NotFoundError(`Category ${categoryId} not found.`);
   }
   return category;
+}
+
+// Phase 12 audit trail. A full row snapshot (plus splits, for a split
+// expense) rather than a hand-picked list of "the fields that matter" --
+// see transaction_history's schema comment for why. Not exported: only
+// updateExpense/updateSplitExpense/deleteTransaction call this, and they
+// all live in this file already.
+type TransactionRow = typeof transactions.$inferSelect;
+
+async function snapshotTransactionRow(
+  tx: Tx,
+  txnRow: TransactionRow
+): Promise<TransactionRow & { splits?: { categoryId: string; amount: string }[] }> {
+  if (txnRow.type !== "expense" || txnRow.categoryId !== null) {
+    return txnRow;
+  }
+  const splits = await tx
+    .select({ categoryId: transactionSplits.categoryId, amount: transactionSplits.amount })
+    .from(transactionSplits)
+    .where(eq(transactionSplits.transactionId, txnRow.id));
+  return { ...txnRow, splits };
+}
+
+async function recordTransactionHistory(
+  tx: Tx,
+  userId: string,
+  transactionId: string,
+  action: "updated" | "deleted",
+  oldValues: unknown,
+  newValues: unknown
+): Promise<void> {
+  await tx.insert(transactionHistory).values({
+    transactionId,
+    userId,
+    action,
+    oldValues: oldValues as object,
+    newValues: newValues as object | null,
+  });
 }
 
 // Locks two rows of the same table in a stable order (by id) so two
@@ -560,6 +598,15 @@ export async function updateSplitExpense(
     .where(eq(transactions.id, txnRow.id))
     .returning();
 
+  await recordTransactionHistory(
+    tx,
+    userId,
+    txnRow.id,
+    "updated",
+    { ...txnRow, splits: existingSplits },
+    { ...updated, splits: params.splits }
+  );
+
   return updated;
 }
 
@@ -665,6 +712,8 @@ export async function updateExpense(
     })
     .where(eq(transactions.id, txnRow.id))
     .returning();
+
+  await recordTransactionHistory(tx, userId, txnRow.id, "updated", txnRow, updated);
 
   return updated;
 }
@@ -1029,6 +1078,11 @@ export async function deleteTransaction(tx: Tx, userId: string, transactionId: s
     throw new NotFoundError(`Transaction ${transactionId} not found.`);
   }
 
+  // Captured before any reversal writes below touch splits/categories/
+  // accounts, so the audit snapshot reflects exactly what existed at the
+  // moment of deletion.
+  const deletedSnapshot = await snapshotTransactionRow(tx, txnRow);
+
   switch (txnRow.type) {
     case "expense": {
       if (!txnRow.accountId) {
@@ -1235,6 +1289,8 @@ export async function deleteTransaction(tx: Tx, userId: string, transactionId: s
       break;
     }
   }
+
+  await recordTransactionHistory(tx, userId, txnRow.id, "deleted", deletedSnapshot, null);
 
   await tx.delete(transactions).where(eq(transactions.id, txnRow.id));
   return { id: txnRow.id, deleted: true };

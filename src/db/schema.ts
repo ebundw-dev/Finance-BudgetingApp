@@ -4,6 +4,7 @@ import {
   check,
   date,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -66,6 +67,9 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   // See recordReconciliation in src/lib/accounting/engine.ts.
   "reconciliation",
 ]);
+
+// Phase 12: what kind of change transaction_history is recording.
+export const transactionHistoryActionEnum = pgEnum("transaction_history_action", ["updated", "deleted"]);
 
 export const scheduledCadenceEnum = pgEnum("scheduled_cadence", [
   "weekly",
@@ -507,3 +511,32 @@ export const monthCategorySnapshots = pgTable(
     ),
   ]
 );
+
+// A lightweight audit trail for transaction edits/deletes (Phase 12).
+// transactionId is deliberately NOT a foreign key: a "deleted" row's
+// whole point is to outlive the transactions row it describes, and an
+// FK (even with onDelete: "cascade") would either block the delete
+// entirely (the default RESTRICT behavior) or delete this exact history
+// row along with it (cascade) -- both defeat the feature. Written
+// automatically inside updateExpense/updateSplitExpense/deleteTransaction
+// in src/lib/accounting/engine.ts, never as a separate manual logging
+// call from elsewhere.
+export const transactionHistory = pgTable("transaction_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  transactionId: uuid("transaction_id").notNull(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  action: transactionHistoryActionEnum("action").notNull(),
+  // Full snapshot of the transaction row (plus its splits, for a split
+  // expense) before the change -- honest before/after state rather than
+  // a hand-picked list of "the fields that changed", so nothing is ever
+  // missed if a future edit path touches a field this table's author
+  // didn't anticipate.
+  oldValues: jsonb("old_values").notNull(),
+  // null for a "deleted" action -- there is no "after" state.
+  newValues: jsonb("new_values"),
+  changedAt: timestamp("changed_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
