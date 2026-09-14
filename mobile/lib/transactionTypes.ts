@@ -12,6 +12,7 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   debt_payment: "Debt Payment",
   transfer: "Transfer",
   category_reallocation: "Reallocation",
+  reconciliation: "Reconciliation",
 };
 
 export const TRANSACTION_TYPE_TONE: Record<TransactionType, Tone> = {
@@ -21,4 +22,5 @@ export const TRANSACTION_TYPE_TONE: Record<TransactionType, Tone> = {
   debt_payment: "warning",
   transfer: "default",
   category_reallocation: "default",
+  reconciliation: "info",
 };

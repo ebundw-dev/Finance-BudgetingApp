@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,9 +8,18 @@ import { TransactionRowItem } from "../components/TransactionRowItem";
 import { ScreenHeader } from "../components/ScreenHeader";
 import { LoadingView } from "../components/LoadingView";
 import { ErrorView } from "../components/ErrorView";
+import { TransactionFiltersModal, EMPTY_FILTERS, type TransactionFilters } from "../components/TransactionFiltersModal";
 import { colors } from "../lib/theme";
 import { currentMonthRange } from "../lib/dates";
-import { ApiError, fetchTransactions, type TransactionRow } from "../lib/api";
+import {
+  ApiError,
+  fetchAccounts,
+  fetchCategories,
+  fetchTransactions,
+  type Account,
+  type CategoryGroup,
+  type TransactionRow,
+} from "../lib/api";
 import { useConnection } from "../lib/ConnectionContext";
 import type { TransactionsStackParamList } from "../navigation/TransactionsStack";
 
@@ -18,6 +27,26 @@ type Phase = "loading" | "ready" | "error";
 const PAGE_SIZE = 30;
 
 type Props = NativeStackScreenProps<TransactionsStackParamList, "TransactionsList">;
+
+// Defaults to "this month, no other filters" -- the same window the
+// screen always showed before Phase 12's search/filtering.
+function defaultFilters(): TransactionFilters {
+  const { dateFrom, dateTo } = currentMonthRange();
+  return { ...EMPTY_FILTERS, dateFrom, dateTo };
+}
+
+function isFiltered(filters: TransactionFilters, search: string): boolean {
+  const defaults = defaultFilters();
+  return (
+    search.trim().length > 0 ||
+    filters.categoryId !== null ||
+    filters.accountId !== null ||
+    filters.dateFrom !== defaults.dateFrom ||
+    filters.dateTo !== defaults.dateTo ||
+    filters.amountMin !== "" ||
+    filters.amountMax !== ""
+  );
+}
 
 export default function TransactionsListScreen({ navigation }: Props) {
   const { connection, openConnectionForm } = useConnection();
@@ -29,6 +58,30 @@ export default function TransactionsListScreen({ navigation }: Props) {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [filters, setFilters] = useState<TransactionFilters>(defaultFilters);
+  const [showFilters, setShowFilters] = useState(false);
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [groups, accountRows] = await Promise.all([
+          fetchCategories(connection.baseUrl, connection.token),
+          fetchAccounts(connection.baseUrl, connection.token),
+        ]);
+        setCategoryGroups(groups);
+        setAccounts(accountRows);
+      } catch {
+        // The filter modal's pickers just show empty sections if this
+        // fails -- non-fatal, the transaction list itself doesn't depend
+        // on it.
+      }
+    })();
+  }, [connection]);
+
   const loadFirstPage = useCallback(
     async (isRefresh: boolean) => {
       if (isRefresh) {
@@ -38,10 +91,14 @@ export default function TransactionsListScreen({ navigation }: Props) {
         setPhase("loading");
       }
       try {
-        const { dateFrom, dateTo } = currentMonthRange();
         const result = await fetchTransactions(connection.baseUrl, connection.token, {
-          dateFrom,
-          dateTo,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          categoryId: filters.categoryId ?? undefined,
+          accountId: filters.accountId ?? undefined,
+          amountMin: filters.amountMin || undefined,
+          amountMax: filters.amountMax || undefined,
+          search: appliedSearch || undefined,
           limit: PAGE_SIZE,
           offset: 0,
         });
@@ -60,13 +117,11 @@ export default function TransactionsListScreen({ navigation }: Props) {
         if (isRefresh) setRefreshing(false);
       }
     },
-    [connection]
+    [connection, filters, appliedSearch]
   );
 
-  // Refetch the current month's first page whenever this tab regains
-  // focus -- covers both switching back to it and returning here after
-  // creating an expense on the New Expense screen, without needing to
-  // plumb a manual refresh signal through navigation params.
+  // Refetch whenever this tab regains focus (covers returning from New
+  // Expense) or the applied filters/search change.
   useFocusEffect(
     useCallback(() => {
       loadFirstPage(false);
@@ -77,10 +132,14 @@ export default function TransactionsListScreen({ navigation }: Props) {
     if (loadingMore || rows.length >= total) return;
     setLoadingMore(true);
     try {
-      const { dateFrom, dateTo } = currentMonthRange();
       const result = await fetchTransactions(connection.baseUrl, connection.token, {
-        dateFrom,
-        dateTo,
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined,
+        categoryId: filters.categoryId ?? undefined,
+        accountId: filters.accountId ?? undefined,
+        amountMin: filters.amountMin || undefined,
+        amountMax: filters.amountMax || undefined,
+        search: appliedSearch || undefined,
         limit: PAGE_SIZE,
         offset: rows.length,
       });
@@ -92,6 +151,8 @@ export default function TransactionsListScreen({ navigation }: Props) {
       setLoadingMore(false);
     }
   }
+
+  const filtered = isFiltered(filters, appliedSearch);
 
   if (phase === "loading") {
     return (
@@ -127,7 +188,40 @@ export default function TransactionsListScreen({ navigation }: Props) {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <ScreenHeader eyebrow="This month" title="Transactions" />
+            <ScreenHeader eyebrow={filtered ? "Filtered" : "This month"} title="Transactions" />
+
+            <View style={styles.searchRow}>
+              <View style={styles.searchInputWrapper}>
+                <Ionicons name="search" size={15} color={colors.textMuted} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  value={searchInput}
+                  onChangeText={setSearchInput}
+                  onSubmitEditing={() => setAppliedSearch(searchInput.trim())}
+                  placeholder="Search payee…"
+                  placeholderTextColor={colors.textMuted}
+                  returnKeyType="search"
+                />
+                {searchInput.length > 0 ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSearchInput("");
+                      setAppliedSearch("");
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                style={[styles.filterButton, filtered && styles.filterButtonActive]}
+                onPress={() => setShowFilters(true)}
+                accessibilityLabel="Filters"
+              >
+                <Ionicons name="options" size={18} color={filtered ? colors.onAccent : colors.text} />
+              </TouchableOpacity>
+            </View>
+
             {refreshError ? (
               <View style={styles.refreshErrorBanner}>
                 <Text style={styles.refreshErrorText}>Refresh failed: {refreshError}</Text>
@@ -136,7 +230,9 @@ export default function TransactionsListScreen({ navigation }: Props) {
           </View>
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={<Text style={styles.emptyText}>No transactions this month.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>{filtered ? "No transactions match these filters." : "No transactions this month."}</Text>
+        }
         ListFooterComponent={
           hasMore ? (
             <TouchableOpacity style={styles.loadMoreButton} onPress={loadMore} disabled={loadingMore}>
@@ -160,6 +256,15 @@ export default function TransactionsListScreen({ navigation }: Props) {
       >
         <Ionicons name="add" size={28} color={colors.onAccent} />
       </TouchableOpacity>
+
+      <TransactionFiltersModal
+        visible={showFilters}
+        initial={filters}
+        categoryGroups={categoryGroups}
+        accounts={accounts}
+        onApply={setFilters}
+        onClose={() => setShowFilters(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -175,7 +280,41 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 14,
-    gap: 10,
+    gap: 12,
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surfaceHover,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  searchIcon: {
+    marginTop: 1,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    paddingVertical: 10,
+  },
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceHover,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterButtonActive: {
+    backgroundColor: colors.accent,
   },
   separator: {
     height: 10,

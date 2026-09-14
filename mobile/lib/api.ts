@@ -275,7 +275,8 @@ export type TransactionType =
   | "expense"
   | "debt_payment"
   | "transfer"
-  | "category_reallocation";
+  | "category_reallocation"
+  | "reconciliation";
 
 export interface TransactionRow {
   id: string;
@@ -303,6 +304,12 @@ export interface FetchTransactionsParams {
   dateTo?: string;
   accountId?: string;
   categoryId?: string;
+  // Fuzzy (case-insensitive substring) match against payee/description --
+  // mirrors src/lib/transactions/queries.ts's listTransactionsPaginated
+  // search option (Phase 12).
+  search?: string;
+  amountMin?: string;
+  amountMax?: string;
   limit?: number;
   offset?: number;
 }
@@ -317,6 +324,9 @@ export async function fetchTransactions(
   if (params.dateTo) query.set("dateTo", params.dateTo);
   if (params.accountId) query.set("accountId", params.accountId);
   if (params.categoryId) query.set("categoryId", params.categoryId);
+  if (params.search) query.set("search", params.search);
+  if (params.amountMin) query.set("amountMin", params.amountMin);
+  if (params.amountMax) query.set("amountMax", params.amountMax);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.offset !== undefined) query.set("offset", String(params.offset));
   const qs = query.toString();
