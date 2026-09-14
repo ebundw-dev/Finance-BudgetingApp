@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { accounts, categories, transactionSplits, transactions } from "@/db/schema";
+import { normalizePayee } from "@/lib/subscriptions/detect";
 
 const relatedAccounts = alias(accounts, "related_accounts");
 const relatedCategories = alias(categories, "related_categories");
@@ -142,6 +143,14 @@ export interface ListTransactionsOptions {
   categoryId?: string;
   dateFrom?: string;
   dateTo?: string;
+  // Fuzzy (case-insensitive substring) match against the payee/description
+  // (transactions.source) -- normalizePayee's whitespace/case collapsing
+  // (src/lib/subscriptions/detect.ts) is reused so "  Costco  " and
+  // "costco" search the same way that function already treats them as the
+  // same payee, on top of ILIKE's own case-insensitivity.
+  search?: string;
+  amountMin?: string;
+  amountMax?: string;
   limit?: number;
   offset?: number;
 }
@@ -153,11 +162,13 @@ export interface PaginatedTransactions {
   offset: number;
 }
 
-// The mobile API's list endpoint needs pagination and account/category/
-// date-range filters that listRecentTransactions (used by the web
-// Transactions page) was never built for -- rather than bend that
-// function to cover both, this is a separate, parallel query so the web
-// page's behavior stays exactly as it is.
+// The mobile API's (and, as of Phase 12, the web Transactions page's)
+// list endpoint needs pagination and account/category/date-range/search/
+// amount-range filters that listRecentTransactions was never built for --
+// rather than bend that function to cover both, this is a separate,
+// parallel query. listRecentTransactions is still used elsewhere
+// (currently nowhere -- the web page moved to this one in Phase 12) so
+// it's left as-is rather than deleted.
 export async function listTransactionsPaginated(
   userId: string,
   options: ListTransactionsOptions = {}
@@ -170,6 +181,9 @@ export async function listTransactionsPaginated(
   if (options.categoryId) conditions.push(eq(transactions.categoryId, options.categoryId));
   if (options.dateFrom) conditions.push(gte(transactions.date, options.dateFrom));
   if (options.dateTo) conditions.push(lte(transactions.date, options.dateTo));
+  if (options.search) conditions.push(ilike(transactions.source, `%${normalizePayee(options.search)}%`));
+  if (options.amountMin) conditions.push(gte(transactions.amount, options.amountMin));
+  if (options.amountMax) conditions.push(lte(transactions.amount, options.amountMax));
   const where = and(...conditions);
 
   const [rows, countRows] = await Promise.all([

@@ -13,6 +13,9 @@ export async function GET(request: Request) {
   const categoryId = url.searchParams.get("categoryId") ?? undefined;
   const dateFrom = url.searchParams.get("dateFrom") ?? undefined;
   const dateTo = url.searchParams.get("dateTo") ?? undefined;
+  const search = url.searchParams.get("search") ?? undefined;
+  const amountMin = url.searchParams.get("amountMin") ?? undefined;
+  const amountMax = url.searchParams.get("amountMax") ?? undefined;
   const limit = url.searchParams.get("limit");
   const offset = url.searchParams.get("offset");
 
@@ -21,6 +24,9 @@ export async function GET(request: Request) {
     categoryId,
     dateFrom,
     dateTo,
+    search,
+    amountMin,
+    amountMax,
     limit: limit ? Number(limit) : undefined,
     offset: offset ? Number(offset) : undefined,
   });
