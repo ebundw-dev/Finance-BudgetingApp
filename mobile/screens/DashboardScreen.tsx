@@ -170,6 +170,12 @@ export default function DashboardScreen() {
           <StatCard label="Income This Month" value={currency(data.incomeThisMonth)} tone="success" icon="arrow-down-circle" />
           <StatCard label="Spending This Month" value={currency(data.spendingThisMonth)} tone="warning" icon="arrow-up-circle" />
           <StatCard label="Debt Paid This Month" value={currency(data.debtPaidThisMonth)} tone="accent" icon="checkmark-circle" />
+          <StatCard
+            label="Age of Money"
+            value={data.ageOfMoneyDays !== null ? `${data.ageOfMoneyDays} day${data.ageOfMoneyDays === 1 ? "" : "s"}` : "—"}
+            tone="info"
+            icon="hourglass"
+          />
         </View>
 
         <Card style={styles.sectionCard}>

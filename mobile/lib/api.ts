@@ -84,6 +84,9 @@ export interface DashboardData {
   dueScheduledCount: number;
   upcomingScheduledCount: number;
   newSubscriptionCount: number;
+  // Computed server-side (src/lib/dashboard/ageOfMoney.ts) -- null means
+  // no spending in the measurement window yet.
+  ageOfMoneyDays: number | null;
 }
 
 export async function fetchDashboard(baseUrl: string, token: string): Promise<DashboardData> {
