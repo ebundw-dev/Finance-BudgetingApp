@@ -1,9 +1,10 @@
 import "server-only";
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, categories, debts, transactions, users } from "@/db/schema";
 import { getAllocatedThisMonthByCategory } from "@/lib/categories/queries";
 import type { TargetType } from "@/lib/categories/targets";
+import { computeAgeOfMoney } from "@/lib/dashboard/ageOfMoney";
 import { getDueAndUpcomingCounts } from "@/lib/scheduled/queries";
 import { getNewSubscriptionCount } from "@/lib/subscriptions/queries";
 
@@ -36,6 +37,26 @@ export interface DashboardData {
   dueScheduledCount: number;
   upcomingScheduledCount: number;
   newSubscriptionCount: number;
+  // null means there's no spending in the measurement window yet (a
+  // brand new budget). See src/lib/dashboard/ageOfMoney.ts for the
+  // FIFO-based calculation itself.
+  ageOfMoneyDays: number | null;
+}
+
+// Every income/expense transaction ever recorded, oldest first -- the
+// FIFO simulation in computeAgeOfMoney needs full history to know which
+// income dollars have already been "spent" by earlier expenses, not just
+// whatever falls inside the reporting window itself.
+async function getAgeOfMoneyTransactions(userId: string) {
+  return db
+    .select({
+      type: transactions.type,
+      date: transactions.date,
+      amount: transactions.amount,
+    })
+    .from(transactions)
+    .where(and(eq(transactions.userId, userId), inArray(transactions.type, ["income", "expense"])))
+    .orderBy(transactions.date);
 }
 
 function currentMonthRange(): { start: string; end: string } {
@@ -59,6 +80,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     allocatedThisMonth,
     { dueCount, upcomingCount },
     newSubscriptionCount,
+    ageOfMoneyTransactions,
   ] = await Promise.all([
       db.select({ phase: users.phase }).from(users).where(eq(users.id, userId)),
       db
@@ -109,7 +131,12 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       getAllocatedThisMonthByCategory(userId),
       getDueAndUpcomingCounts(userId),
       getNewSubscriptionCount(userId),
+      getAgeOfMoneyTransactions(userId),
     ]);
+
+  const { ageOfMoneyDays } = computeAgeOfMoney(
+    ageOfMoneyTransactions.map((t) => ({ ...t, type: t.type as "income" | "expense" }))
+  );
 
   const totalCash = cashRow.totalCash;
   const totalDebt = debtRow.totalDebt;
@@ -157,5 +184,6 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     dueScheduledCount: dueCount,
     upcomingScheduledCount: upcomingCount,
     newSubscriptionCount,
+    ageOfMoneyDays,
   };
 }

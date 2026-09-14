@@ -10,6 +10,7 @@ import {
   Target,
   Bell,
   Radar,
+  Hourglass,
 } from "lucide-react";
 import { verifySession } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard/queries";
@@ -111,7 +112,7 @@ export default async function Home() {
         />
       </div>
 
-      <div className="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Income This Month"
           value={currency(data.incomeThisMonth)}
@@ -129,6 +130,12 @@ export default async function Home() {
           value={currency(data.debtPaidThisMonth)}
           tone="accent"
           icon={CheckCircle2}
+        />
+        <StatCard
+          label="Age of Money"
+          value={data.ageOfMoneyDays !== null ? `${data.ageOfMoneyDays} day${data.ageOfMoneyDays === 1 ? "" : "s"}` : "—"}
+          tone="info"
+          icon={Hourglass}
         />
       </div>
 
